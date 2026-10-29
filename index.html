@@ -213,6 +213,25 @@ textarea{min-height:64px;resize:vertical}
 @keyframes rise{0%{transform:translate(0,0);opacity:0}12%{opacity:.85}100%{transform:translate(24px,-108vh);opacity:0}}
 .secret{text-align:center;font-size:14px;color:var(--dim)}
 @media (prefers-reduced-motion:reduce){.flip{transition:none}.embers{display:none}}
+
+/* Libro de personajes */
+.pvbox.wide{width:min(100%,640px)}
+.lst{display:flex;flex-direction:column;gap:12px}
+.lst h1{font-size:34px;color:var(--ember);line-height:1;text-align:center}
+.th{font-size:26px;margin-top:10px;color:var(--tc)}
+.rle{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:12px;border:1px solid var(--line);border-left:4px solid var(--tc);border-radius:12px;background:var(--ink2)}
+.rle.own{border-color:var(--ember);box-shadow:0 0 0 1px var(--ember),0 0 24px rgba(242,138,31,.3)}
+.ri{font-size:34px;line-height:1}
+.rb h3{font-size:22px;color:var(--tc)}
+.you{font-family:var(--label);font-size:13px;color:#1b0e02;background:var(--ember);padding:1px 8px;border-radius:999px;vertical-align:middle;margin-left:6px;letter-spacing:.04em}
+.rt{font-family:var(--label);font-size:13px;color:var(--dim);letter-spacing:.08em}
+.rb p{margin:.3em 0 0}
+.rw{color:var(--dim);font-size:15px}
+.fil{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.rules{border:1px solid var(--line);border-radius:12px;background:var(--ink2);padding:10px 14px}
+.rules summary{cursor:pointer;font-family:var(--label);color:var(--ember);letter-spacing:.06em}
+.rules ul{margin:8px 0 2px;padding-left:20px}
+.rules li{margin:4px 0}
 </style>
 </head>
 <body>
@@ -455,6 +474,9 @@ function vCards(){
   return `<div class="wrap"><div class="panel"><h2>Tarjetas de rol</h2><p class="sub">Cada jugador escanea su QR con la cámara del móvil y ve su carta. Puedes abrir el QR de cualquiera en cualquier momento, también desde su ficha en el grimorio. Si el rol de alguien cambia, enséñale el QR otra vez. ${seen}/${S.players.length} jugadores ya lo han visto.</p>
   <button class="btn primary block" style="margin-top:10px" data-act="qrfirst">${seen?'Seguir repartiendo tarjetas':'Empezar a repartir tarjetas'}</button></div>
   <div class="pgrid">${S.players.map(p=>`<button class="pbtn ${p.seen?'seen':''}" data-act="showqr" data-id="${p.id}"><b>${esc(p.name)}</b><span class="sub">${p.seen?'visto ✓ · volver a mostrar':'mostrar QR'}</span></button>`).join('')}</div>
+  <div class="panel"><h2>Libro de personajes</h2><p class="sub">Un QR general para toda la mesa, con la lista de personajes de esta partida y un resumen de reglas. Cada jugador también lo abre desde su carta. Los personajes que desmarques en Preparar no aparecen.</p>
+  ${rolesUrl()?`<div class="qrframe" style="margin:10px auto;width:min(60vw,220px)">${qrSVG(rolesUrl())}</div>`:''}
+  <div class="row" style="justify-content:center"><button class="btn sm" data-act="copyroles">Copiar enlace</button></div></div>
   <div class="panel"><h2>Dirección de la web</h2><p class="sub">Debe ser la dirección pública desde la que se abre esta página, por ejemplo https://usuario.github.io/grimorio-medianoche/. Los móviles de los jugadores necesitan poder abrirla.</p>
   <input type="text" id="baseurl" data-chg="baseurl" value="${esc(S.baseUrl||defaultBase())}" placeholder="https://…" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Dirección pública de la web">
   ${b?'':'<p class="verdict" style="margin-top:8px">Sin dirección no se pueden generar los QR. Abre esta página desde su dirección pública o escríbela arriba.</p>'}</div>
@@ -473,11 +495,13 @@ function cardData(p){
   }
   return d;
 }
-const encCard=d=>b64e(JSON.stringify([1,d.r,d.n,d.m,d.d,d.b]));
-function decCard(t){const a=JSON.parse(b64d(t));return{r:a[1],n:a[2],m:a[3]||[],d:a[4]||[],b:a[5]||[]}}
+const encCard=(d,mask)=>b64e(JSON.stringify([1,d.r,d.n,d.m,d.d,d.b,mask.toString(36)]));
+function decCard(t){const a=JSON.parse(b64d(t));return{r:a[1],n:a[2],m:a[3]||[],d:a[4]||[],b:a[5]||[],mask:a[6]!=null?parseInt(a[6],36):null}}
 function defaultBase(){return /^https?:$/.test(location.protocol)?location.href.split('#')[0].split('?')[0]:''}
 function baseUrl(){return String(S.baseUrl||defaultBase()).trim().split('#')[0]}
-function playerUrl(p){const b=baseUrl();return b?b+'#c='+encCard(cardData(p)):''}
+const poolMask=()=>ROLES.reduce((m,r,i)=>S.pool.includes(r.id)?m|(1<<i):m,0);
+function playerUrl(p){const b=baseUrl();return b?b+'#c='+encCard(cardData(p),poolMask()):''}
+function rolesUrl(){const b=baseUrl();return b?b+'#roles='+poolMask().toString(36):''}
 function qrSVG(text){
   try{
     const q=qrcode(0,'M');q.addData(text);q.make();
@@ -509,9 +533,45 @@ function cardFromData(d){
 }
 function cardHTML(p){return cardFromData(cardData(p))}
 
+function wakeShort(r){
+  if(r.id==='murcielago')return 'Solo despierta de noche si muere esa noche.';
+  if(r.f&&r.o)return 'Despierta todas las noches.';
+  if(r.f)return 'Despierta solo la primera noche.';
+  if(r.o)return 'Despierta a partir de la segunda noche.';
+  return 'Pasiva o de día: no despierta de noche.';
+}
+const RULES=['El pueblo (los buenos) gana si ejecuta al Demonio. Los malvados ganan si quedan 2 jugadores vivos y el Demonio es uno de ellos.',
+ 'De noche el Narrador despierta a algunos personajes. De día se habla, se nomina y se vota.',
+ 'Cada jugador vivo puede nominar una vez por día y solo puede ser nominado una vez por día.',
+ 'Para ir a la hoguera hacen falta votos de al menos la mitad de los jugadores vivos, redondeando hacia arriba. Se ejecuta como máximo a uno por día: el más votado. Si hay empate, no se ejecuta a nadie.',
+ 'Los muertos siguen hablando y pueden votar una sola vez en toda la partida (voto fantasma), pero ya no nominan.',
+ 'Mentir está permitido. Tu carta es secreta: enseñarla o no es decisión tuya.'];
+function renderList(){
+  const d=PV.d,own=d?d.r:-1,mask=PV.mask,f=PV.f||'all',app=$('#app');
+  const show=(r,i)=>i===own||mask==null||((mask>>>i)&1)===1;
+  const groups=['town','out','min','dem'].filter(t=>f==='all'||f===t).map(t=>{
+    const items=ROLES.map((r,i)=>({r,i})).filter(x=>x.r.t===t&&show(x.r,x.i));
+    if(!items.length)return '';
+    return `<h2 class="th t-${t}">${TEAMS[t].p} · ${items.length}</h2>`+items.map(({r,i})=>`<article class="rle t-${r.t} ${i===own?'own':''}"${i===own?' id="ownrole"':''}><div class="ri" aria-hidden="true">${r.i}</div><div class="rb"><h3>${esc(r.n)}${i===own?' <span class="you">Tu personaje</span>':''}</h3><div class="rt">${TEAMS[r.t].n.toUpperCase()}</div><p>${esc(r.a)}</p><p class="rw">${wakeShort(r)}</p></div></article>`).join('');
+  }).join('');
+  const fil=[['all','Todos'],['town','Aldeanos'],['out','Marginados'],['min','Esbirros'],['dem','Demonios']].map(([k,l])=>`<button class="chipb" data-act="pfilter" data-k="${k}" aria-pressed="${f===k}">${l}</button>`).join('');
+  const em=Array.from({length:10},(_,i)=>`<span style="left:${(i*9.7+6)%100}%;animation-duration:${9+(i*1.9)%7}s;animation-delay:${(i*1.7)%9}s"></span>`).join('');
+  app.innerHTML=`<div class="embers" aria-hidden="true">${em}</div><div class="pv"><div class="pvbox wide"><div class="lst">
+   <div class="pvtop"><div class="lbl">La Noche de las Ánimas</div></div><h1>Libro de personajes</h1>
+   <p class="sub" style="text-align:center;margin:0">${mask==null?'Todos los personajes del script.':'Los personajes que pueden salir en esta partida.'}</p>
+   ${d?'<button class="btn primary block" data-act="pback">← Volver a mi carta</button>':''}
+   <details class="rules"><summary>Resumen de reglas</summary><ul>${RULES.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></details>
+   <div class="fil" role="group" aria-label="Filtrar por bando">${fil}</div>
+   ${groups||'<p class="sub">No hay personajes en esta categoría.</p>'}
+   ${d?'<button class="btn block" data-act="pback">← Volver a mi carta</button>':''}
+  </div></div></div>`;
+  if(PV.first){PV.first=false;const o=$('#ownrole');if(o)o.scrollIntoView({block:'center'})}
+}
+
 /* ---- Vista del jugador (se abre al escanear el QR) ---- */
-const PV={d:null};
+const PV={d:null,view:'card',mask:null,f:'all',first:false};
 function renderPlayer(){
+  if(PV.view==='list'){renderList();return}
   const d=PV.d,r=d&&ROLES[d.r],app=$('#app');
   if(!r){app.innerHTML=`<div class="pv"><div class="pvbox"><div class="panel empty"><h2>Enlace no válido</h2><p>Pídele al Narrador que te enseñe tu QR otra vez.</p></div></div></div>`;return}
   const em=Array.from({length:14},(_,i)=>`<span style="left:${(i*7.3+4)%100}%;animation-duration:${8+(i*1.7)%7}s;animation-delay:${(i*1.3)%9}s"></span>`).join('');
@@ -523,6 +583,7 @@ function renderPlayer(){
    </div></div>
    <button class="btn primary block" id="ptog" data-act="ptoggle">Revelar mi rol</button>
    <div class="goal" id="pgoal" hidden style="--tc:var(--${r.t})"><b>TU OBJETIVO</b>${esc(GOAL[r.t])}</div>
+   <button class="btn block" data-act="plist">📖 Ver todos los personajes</button>
    <p class="secret">Puedes volver a abrir este enlace cuando quieras. Si tu rol cambia, el Narrador te enseñará un QR nuevo.</p>
   </div></div>`;
 }
@@ -616,6 +677,10 @@ const A={
     if(nx){U.qr=nx.id;commit()}else{U.qr=null;commit();toast('Todos los jugadores han visto su tarjeta')}
   },
   copylink:(d)=>{const u=playerUrl(P(d.id));try{navigator.clipboard.writeText(u).then(()=>toast('Enlace copiado'),()=>toast('No se pudo copiar el enlace'))}catch(e){toast('No se pudo copiar el enlace')}},
+  plist:()=>{PV.view='list';PV.first=true;renderPlayer();const pv=$('.pv');if(pv)pv.scrollTop=0},
+  pback:()=>{PV.view='card';renderPlayer()},
+  pfilter:(d)=>{PV.f=d.k;renderList()},
+  copyroles:()=>{const u=rolesUrl();try{navigator.clipboard.writeText(u).then(()=>toast('Enlace copiado'),()=>toast('No se pudo copiar el enlace'))}catch(e){toast('No se pudo copiar el enlace')}},
   ptoggle:()=>{
     const sc=$('#scene');if(!sc)return;
     const on=sc.classList.toggle('on');
@@ -697,8 +762,9 @@ setInterval(()=>{
 try{if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){})}catch(e){}
 /* ============ Arranque ============ */
 function start(d){
-  const m=/^#c=([\w-]+)$/.exec(location.hash);
-  if(m){try{PV.d=decCard(m[1])}catch(e){PV.d=null}renderPlayer();return}
+  const m=/^#c=([\w-]+)$/.exec(location.hash),l=/^#roles(?:=([0-9a-z]+))?$/.exec(location.hash);
+  if(l){PV.d=null;PV.view='list';PV.mask=l[1]?parseInt(l[1],36):null;renderList();return}
+  if(m){try{PV.d=decCard(m[1]);PV.mask=PV.d.mask}catch(e){PV.d=null}renderPlayer();return}
   S=(d&&d.S)||load()||fresh();
   if(!S.players)S=fresh();
   render();
