@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Grimorio de Medianoche</title>
+<meta name="theme-color" content="#0e0a15">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Grimorio">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<style>
+@font-face{font-family:'Pirata One';src:url(fonts/pirata-one.woff2) format('woff2');font-display:swap}
+@font-face{font-family:'IM Fell English';src:url(fonts/im-fell-english.woff2) format('woff2');font-display:swap}
+@font-face{font-family:'IM Fell English SC';src:url(fonts/im-fell-english-sc.woff2) format('woff2');font-display:swap}
+/* Idea de composición: app de una pantalla con barra inferior; el grimorio es un círculo de fichas sobre un anillo de runas; el resto son hojas de pergamino oscuro. */
+:root{
+  --ink:#0e0a15;
+  --ink2:#171021;
+  --ink3:#251b34;
+  --line:#3d2e50;
+  --bone:#efe4cb;
+  --dim:#b5a9c0;
+  --ember:#f28a1f;
+  --town:#7cc4ea;
+  --out:#5fd6b0;
+  --min:#e8648a;
+  --dem:#e03048;
+  --parch:#eadcb6;
+  --parch-ink:#2b1a12;
+  --display:'Pirata One',Georgia,serif;
+  --body:'IM Fell English',Georgia,serif;
+  --label:'IM Fell English SC',Georgia,serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--ink);color:var(--bone);font:18px/1.4 var(--body);overflow:hidden;-webkit-text-size-adjust:100%}
+body::before{content:"";position:fixed;inset:-20%;pointer-events:none;z-index:0;
+  background:
+   radial-gradient(40% 30% at 20% 85%,rgba(242,138,31,.10),transparent 70%),
+   radial-gradient(45% 35% at 85% 15%,rgba(124,196,234,.07),transparent 70%),
+   radial-gradient(60% 40% at 50% 100%,rgba(120,70,160,.18),transparent 70%);
+  animation:drift 40s ease-in-out infinite alternate}
+@keyframes drift{from{transform:translate3d(-2%,0,0)}to{transform:translate3d(3%,-2%,0)}}
+@media (prefers-reduced-motion:reduce){body::before{animation:none}.flame{animation:none!important}}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--ember);outline-offset:2px}
+h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance}
+.lbl{font-family:var(--label);letter-spacing:.06em;color:var(--dim);font-size:14px}
+
+#app{position:relative;z-index:1;height:100%;display:flex;flex-direction:column}
+header.top{display:flex;align-items:center;gap:10px;padding:calc(8px + env(safe-area-inset-top)) 14px 8px;border-bottom:1px solid var(--line);background:rgba(14,10,21,.85)}
+header.top h1{font-size:22px;color:var(--ember);line-height:1;flex:1;text-wrap:balance}
+.chip{font-family:var(--label);font-size:15px;padding:4px 12px;border:1px solid var(--line);border-radius:999px;background:var(--ink2);white-space:nowrap}
+.chip.night{border-color:#5b4a8a}
+.chip.dayc{border-color:var(--ember)}
+.ghostbtn{background:transparent;border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-family:var(--label);font-size:14px}
+.ghostbtn[aria-pressed="true"]{border-color:var(--ember);color:var(--ember)}
+
+main{flex:1;overflow:auto;padding:16px 14px 28px;-webkit-overflow-scrolling:touch}
+.wrap{max-width:620px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+nav.bar{display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--line);background:rgba(14,10,21,.95);padding-bottom:env(safe-area-inset-bottom)}
+nav.bar button{background:none;border:0;padding:8px 2px 9px;display:flex;flex-direction:column;align-items:center;gap:1px;font-family:var(--label);font-size:14px;color:var(--dim);position:relative}
+nav.bar button b{font-weight:400;font-size:22px;line-height:1.1;font-family:Georgia,serif}
+nav.bar button[aria-current="true"]{color:var(--ember)}
+nav.bar button[aria-current="true"]::after{content:"";position:absolute;top:0;left:30%;right:30%;height:2px;background:var(--ember);box-shadow:0 0 10px var(--ember)}
+
+.panel{background:linear-gradient(180deg,var(--ink2),#130d1c);border:1px solid var(--line);border-radius:14px;padding:14px}
+.panel h2{font-size:24px;color:var(--bone);margin-bottom:6px}
+.panel p{margin:.3em 0}
+.sub{color:var(--dim);font-size:16px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{background:var(--ink3);border:1px solid var(--line);border-radius:10px;padding:9px 14px;font-family:var(--label);font-size:16px}
+.btn:hover{border-color:var(--dim)}
+.btn.primary{background:var(--ember);border-color:var(--ember);color:#1b0e02;font-weight:700}
+.btn.danger{border-color:var(--dem);color:#ff8d9b}
+.btn.sm{padding:5px 10px;font-size:14px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.btn.block{width:100%;padding:13px;font-size:18px}
+input[type=text],select,textarea{background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%}
+textarea{min-height:64px;resize:vertical}
+
+/* Preparar */
+.plist{list-style:none;margin:10px 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.plist li{display:flex;align-items:center;gap:8px;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:5px 8px}
+.plist .seat{font-family:var(--display);color:var(--ember);width:1.6em;text-align:center}
+.plist .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.comp{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.comp span{font-family:var(--label);font-size:15px;padding:3px 10px;border-radius:8px;border:1px solid var(--tc);color:var(--tc)}
+.t-town{--tc:var(--town)}.t-out{--tc:var(--out)}.t-min{--tc:var(--min)}.t-dem{--tc:var(--dem)}
+.pick{display:flex;gap:10px;align-items:flex-start;padding:8px 4px;border-top:1px solid var(--line)}
+.pick input{margin-top:5px;accent-color:var(--ember);width:18px;height:18px;flex:none}
+.pick .ic{font-size:24px;flex:none;width:1.4em;text-align:center}
+.pick .tx b{font-weight:400;color:var(--tc);font-family:var(--label)}
+.pick .tx small{display:block;color:var(--dim);font-size:15px;line-height:1.3}
+.legal{font-size:14px;color:var(--dim)}
+
+/* Grimorio */
+.ring{position:relative;width:min(100%,540px);aspect-ratio:1;margin:6px auto 26px;container-type:inline-size}
+.runes{position:absolute;inset:0;width:100%;height:100%;fill:none;stroke:var(--line);stroke-width:.25}
+.core{position:absolute;left:50%;top:50%;width:42%;transform:translate(-50%,-50%);text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px}
+.core .moon{font-size:clamp(34px,13cqw,64px);line-height:1;filter:drop-shadow(0 0 14px rgba(242,138,31,.5))}
+.core .ph{font-family:var(--display);font-size:clamp(20px,6.5cqw,32px);color:var(--ember);line-height:1}
+.core .st{font-size:clamp(12px,3.3cqw,16px);color:var(--dim);line-height:1.25}
+.tok{position:absolute;transform:translate(-50%,-50%);width:calc(var(--sz)*1cqw);background:none;border:0;padding:0}
+.medal{display:grid;place-items:center;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 35% 28%,var(--ink3),var(--ink));border:3px solid var(--tc,var(--line));box-shadow:0 0 0 2px var(--ink),0 0 16px color-mix(in srgb,var(--tc,var(--line)) 40%,transparent);font-size:calc(var(--sz)*.5cqw);line-height:1;position:relative}
+.tname{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;white-space:nowrap;max-width:7em;overflow:hidden;text-overflow:ellipsis;font-size:clamp(11px,calc(var(--sz)*.19cqw),15px);text-shadow:0 1px 3px #000;background:rgba(14,10,21,.7);padding:0 4px;border-radius:5px}
+.tok.dead .medal{filter:grayscale(1) brightness(.55)}
+.tok.dead .tname{text-decoration:line-through;color:var(--dim)}
+.tok.dead .medal::after{content:"†";position:absolute;inset:0;display:grid;place-items:center;font-size:.8em;color:#fff;opacity:.85;font-family:Georgia,serif}
+.pip{position:absolute;right:-2px;bottom:-2px;width:.7em;height:.7em;min-width:9px;min-height:9px;border-radius:50%;background:var(--bone);border:2px solid var(--ink);font-size:inherit}
+.bdg{position:absolute;right:-4px;top:-4px;min-width:20px;height:20px;border-radius:10px;background:var(--ember);color:#1b0e02;font:700 12px/20px Georgia,serif;text-align:center;padding:0 4px}
+.mask{position:absolute;left:-5px;top:-5px;font-size:15px;line-height:1}
+.verdict{border:1px solid var(--ember);background:rgba(242,138,31,.1);border-radius:12px;padding:10px 12px;color:var(--bone)}
+.legend{display:flex;gap:8px 14px;flex-wrap:wrap;justify-content:center;font-family:var(--label);font-size:14px;color:var(--dim)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--tc);margin-right:5px}
+
+/* Noche */
+.step{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:start;padding:12px;border:1px solid var(--line);border-left:4px solid var(--tc,var(--line));border-radius:12px;background:var(--ink2)}
+.step.done{opacity:.5}
+.step .ic{font-size:30px;line-height:1;grid-row:span 3}
+.step h3{font-size:21px;color:var(--tc,var(--bone))}
+.step .who{font-size:16px}
+.step .rem{color:var(--dim);font-size:16px;grid-column:2/4}
+.step .btn{grid-row:1;grid-column:3}
+.faro{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.faro span{border:1px dashed var(--line);border-radius:8px;padding:2px 8px;font-size:15px}
+
+/* Dia */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tile{background:var(--ink2);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}
+.tile b{display:block;font-family:var(--display);font-weight:400;font-size:34px;line-height:1;color:var(--ember);font-variant-numeric:tabular-nums}
+.tile span{font-family:var(--label);font-size:13px;color:var(--dim)}
+.vote{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-top:6px}
+.vote[aria-pressed="true"]{border-color:var(--ember);background:rgba(242,138,31,.14)}
+.vote[disabled]{opacity:.35}
+.vote .ck{width:22px;height:22px;border-radius:6px;border:2px solid var(--dim);flex:none;display:grid;place-items:center;font-size:14px}
+.vote[aria-pressed="true"] .ck{background:var(--ember);border-color:var(--ember);color:#1b0e02}
+.bar2{height:10px;border-radius:5px;background:var(--ink);overflow:hidden;margin:8px 0}
+.bar2 i{display:block;height:100%;background:var(--ember)}
+.bar2.ok i{background:var(--dem)}
+.big{font-family:var(--display);font-size:46px;line-height:1;font-variant-numeric:tabular-nums}
+.timer{text-align:center}
+.timer .big{font-size:72px;color:var(--bone)}
+.timer.end .big{color:var(--dem);animation:pulse .6s ease-in-out infinite alternate}
+@keyframes pulse{to{opacity:.35}}
+.nomli{padding:6px 0;border-top:1px solid var(--line);font-size:16px}
+
+/* Hojas y tarjetas */
+.overlay{position:fixed;inset:0;z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.overlay.center{align-items:center;padding:16px}
+.bd{position:absolute;inset:0;background:rgba(5,3,9,.78)}
+.sheet{position:relative;width:min(100%,560px);max-height:90%;overflow:auto;background:var(--ink2);border:1px solid var(--line);border-radius:18px 18px 0 0;padding:16px 16px calc(18px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px}
+.sheet .hd{display:flex;gap:8px;align-items:center}
+.sheet .hd input{font-family:var(--display);font-size:24px}
+.field{display:flex;flex-direction:column;gap:4px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chipb{background:var(--ink);border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:15px}
+.chipb[aria-pressed="true"]{background:var(--ember);border-color:var(--ember);color:#1b0e02}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.pbtn{background:var(--ink2);border:1px solid var(--line);border-radius:12px;padding:14px 8px;text-align:center}
+.pbtn.seen{opacity:.55}
+.pbtn b{display:block;font-family:var(--display);font-weight:400;font-size:22px}
+.cover{position:relative;width:min(100%,380px);text-align:center;padding:30px 20px;background:var(--ink2);border:1px solid var(--line);border-radius:18px;display:flex;flex-direction:column;gap:14px;align-items:center}
+.cover .ph{font-size:64px;line-height:1}
+.card{position:relative;width:min(100%,360px);background:radial-gradient(120% 90% at 50% 0,#f3e8c6,var(--parch) 60%,#cdb985);color:var(--parch-ink);border-radius:18px;padding:22px 20px 20px;text-align:center;border:3px solid var(--tc);box-shadow:0 0 0 5px var(--ink),0 0 0 7px var(--tc),0 20px 50px rgba(0,0,0,.6)}
+.card .ct{font-family:var(--label);letter-spacing:.14em;font-size:15px;color:var(--tc);filter:brightness(.62) saturate(1.4)}
+.card .ci{font-size:84px;line-height:1.15}
+.card h2{font-size:32px;color:var(--parch-ink)}
+.card .ab{font-size:19px;margin:10px 0 0}
+.card .ex{margin-top:12px;padding-top:10px;border-top:1px dashed rgba(43,26,18,.4);font-size:17px;text-align:left}
+.cardwrap{position:relative;display:flex;flex-direction:column;gap:14px;align-items:center;max-height:100%;overflow:auto;padding:6px}
+.toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:40;background:var(--ember);color:#1b0e02;padding:9px 16px;border-radius:12px;font-family:var(--label);max-width:90%;text-align:center}
+.empty{text-align:center;padding:30px 10px;color:var(--dim)}
+.flame{display:inline-block;animation:flick 2.4s ease-in-out infinite alternate}
+@keyframes flick{0%{transform:scale(1) rotate(-2deg)}50%{transform:scale(1.06) rotate(2deg)}100%{transform:scale(.98) rotate(-1deg)}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ============ Datos: script propio "La Noche de las Ánimas" ============ */
+const TEAMS={
+  town:{n:'Aldeano',p:'Aldeanos'},
+  out:{n:'Marginado',p:'Marginados'},
+  min:{n:'Esbirro',p:'Esbirros'},
+  dem:{n:'Demonio',p:'Demonios'}
+};
+/* f = orden la primera noche, o = orden en las demás noches (0 = no despierta) */
+const ROLES=[
+ {id:'vidente',t:'town',i:'🔮',n:'La Vidente de Cenizas',a:'Cada noche eliges a 2 jugadores y aprendes si alguno de ellos es el Demonio. Hay un jugador bueno que siempre te aparece como Demonio.',f:90,o:70,r:'Despierta a la Vidente: elige a 2 jugadores. Asiente si alguno es el Demonio o la falsa pista; si no, niega. Envenenada o borracha: responde lo que quieras.'},
+ {id:'sepulturero',t:'town',i:'⚰️',n:'El Sepulturero',a:'Cada noche, menos la primera, aprendes qué personaje fue ejecutado ese día.',f:0,o:80,r:'Si hubo ejecución hoy, enséñale la ficha del ejecutado. Si no la hubo, no lo despiertes.'},
+ {id:'farolero',t:'town',i:'🏮',n:'El Farolero',a:'Cada noche aprendes cuántos de tus 2 vecinos vivos son malvados.',f:80,o:60,r:'Indica 0, 1 o 2 con los dedos según sus vecinos vivos más cercanos.'},
+ {id:'bibliotecaria',t:'town',i:'📚',n:'La Bibliotecaria Embrujada',a:'La primera noche aprendes que 1 de 2 jugadores es un Marginado concreto, o que no hay ninguno.',f:60,o:0,r:'Enséñale una ficha de Marginado y señala a 2 jugadores, uno de los cuales la tiene. Si no hay Marginados, haz el gesto de cero.'},
+ {id:'cronista',t:'town',i:'📜',n:'El Cronista',a:'La primera noche aprendes que 1 de 2 jugadores es un Aldeano concreto.',f:50,o:0,r:'Enséñale una ficha de Aldeano y señala a 2 jugadores, uno de los cuales la tiene.'},
+ {id:'detective',t:'town',i:'🔍',n:'El Detective de Sombras',a:'La primera noche aprendes que 1 de 2 jugadores es un Esbirro concreto.',f:70,o:0,r:'Enséñale una ficha de Esbirro y señala a 2 jugadores, uno de los cuales la tiene.'},
+ {id:'guardiana',t:'town',i:'🧂',n:'La Guardiana de Sal',a:'Cada noche, menos la primera, eliges a un jugador: el Demonio no puede matarlo esa noche.',f:0,o:30,r:'Despierta a la Guardiana, que señala a un jugador. Pon la marca Protegido.'},
+ {id:'cazador',t:'town',i:'🗡️',n:'El Cazador de Brujas',a:'Una sola vez, de día, eliges a un jugador: si es el Demonio, muere.',f:0,o:0,r:''},
+ {id:'virgen',t:'town',i:'🕯️',n:'La Virgen del Cementerio',a:'La primera vez que te nominan, si quien te nomina es un Aldeano, es ejecutado en el acto.',f:0,o:0,r:''},
+ {id:'soldado',t:'town',i:'🛡️',n:'El Soldado de Paja',a:'El Demonio no puede matarte.',f:0,o:0,r:''},
+ {id:'alcaldesa',t:'town',i:'🏛️',n:'La Alcaldesa Fantasma',a:'Si quedan 3 jugadores vivos y nadie es ejecutado ese día, tu equipo gana. Si el Demonio te ataca de noche, el Narrador puede hacer que muera otro jugador.',f:0,o:0,r:''},
+ {id:'murcielago',t:'town',i:'🦇',n:'El Murciélago Vidente',a:'Si mueres de noche, despiertas y eliges a un jugador: aprendes su personaje.',f:0,o:50,r:'Solo si ha muerto esta noche: despiértalo, que elija a un jugador y enséñale su ficha.'},
+ {id:'costurera',t:'town',i:'🧵',n:'La Costurera de Almas',a:'Una sola vez, de noche, eliges a 2 jugadores: aprendes si son del mismo bando.',f:95,o:85,r:'Si aún no usó su habilidad: que elija a 2 jugadores y asiente si están en el mismo bando. Después marca Habilidad usada.'},
+ {id:'borracho',t:'out',i:'🍾',n:'El Borracho de Sidra',a:'No sabes que lo eres: crees ser un Aldeano, pero tu habilidad no funciona y la información que recibes es falsa.',f:0,o:0,r:''},
+ {id:'eremita',t:'out',i:'🏚️',n:'El Eremita',a:'Las habilidades de otros pueden mostrarte como malvado, Esbirro o Demonio aunque seas bueno.',f:0,o:0,r:''},
+ {id:'santo',t:'out',i:'🕊️',n:'El Santo de Trapo',a:'Si eres ejecutado, tu equipo pierde.',f:0,o:0,r:''},
+ {id:'torpe',t:'out',i:'🤡',n:'El Disfrazado Torpe',a:'Cuando mueres, eliges en el acto a un jugador vivo: si es malvado, tu equipo pierde.',f:0,o:0,r:''},
+ {id:'envenenadora',t:'min',i:'☠️',n:'La Envenenadora de Brebajes',a:'Cada noche eliges a un jugador: queda envenenado hasta el amanecer (su habilidad falla y su información puede ser falsa).',f:10,o:10,r:'Despierta a la Envenenadora: señala a un jugador. Pon la marca Envenenado (quita la anterior).'},
+ {id:'bruja',t:'min',i:'🐈‍⬛',n:'La Bruja de los Gatos',a:'Cada noche eliges a un jugador: si nomina mañana, muere en el acto.',f:15,o:20,r:'Despierta a la Bruja: señala a un jugador. Pon la marca Maldito (quita la anterior).'},
+ {id:'espia',t:'min',i:'🕷️',n:'El Espía Tejedor',a:'Cada noche ves el grimorio. Puedes aparecer como bueno, Aldeano o Marginado.',f:20,o:90,r:'Enséñale el grimorio unos segundos.'},
+ {id:'dama',t:'min',i:'👻',n:'La Dama del Velo',a:'Si hay 5 o más jugadores vivos y el Demonio muere, te conviertes en el Demonio.',f:0,o:0,r:''},
+ {id:'anfitrion',t:'min',i:'🎩',n:'El Anfitrión Siniestro',a:'Preparación: hay 2 Marginados más y 2 Aldeanos menos de lo habitual.',f:0,o:0,r:'',mod:true},
+ {id:'calabaza',t:'dem',i:'🎃',n:'La Calabaza Hueca',a:'Cada noche, menos la primera, eliges a un jugador: muere. Si te eliges a ti misma, mueres y un Esbirro se convierte en la Calabaza Hueca.',f:0,o:40,r:'Despierta a la Calabaza: señala a un jugador. Ese jugador muere al amanecer salvo que esté protegido o sea el Soldado de Paja.'},
+ {id:'jinete',t:'dem',i:'🐴',n:'El Jinete sin Cabeza',a:'Cada noche eliges a un jugador y queda maldito. El jugador maldito la noche anterior muere en ese momento.',f:42,o:40,r:'Despierta al Jinete: señala a un jugador y pon la marca Maldito. El maldito anterior muere ahora (protegido o Soldado de Paja no mueren).'}
+];
+const R=Object.fromEntries(ROLES.map(r=>[r.id,r]));
+const COMP={5:[3,0,1,1],6:[3,1,1,1],7:[5,0,1,1],8:[5,1,1,1],9:[5,2,1,1],10:[7,0,2,1],11:[7,1,2,1],12:[7,2,2,1],13:[9,0,3,1],14:[9,1,3,1],15:[9,2,3,1]};
+const CHIPS=['Envenenado','Protegido','Maldito','Marcado','Falsa pista','Sin habilidad','Habilidad usada','Muere esta noche'];
+const NAMES=['Ana','Biel','Carmen','Dani','Elena','Fran','Gema','Hugo'];
+const KEY='grimorio-medianoche-v1';
+
+/* ============ Estado ============ */
+let S;
+const U={sheet:null,card:null,stage:0,from:'',to:'',voting:null,votes:[],confirm:null,focus:null};
+const T={total:180,left:180,end:null,ac:null,done:false};
+
+function fresh(){return{v:1,players:NAMES.map((n,i)=>({id:i+1,name:n,role:null,shown:null,alive:true,ghost:true,rem:[],note:'',seen:false})),nextId:NAMES.length+1,pool:ROLES.map(r=>r.id),started:false,day:1,night:true,done:{},noms:[],nomd:[],nomr:[],block:null,bluffs:[],hide:false,tab:'setup'}}
+function load(){try{const j=localStorage.getItem(KEY);if(j){const s=JSON.parse(j);if(s&&s.v===1)return s}}catch(e){}return null}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const P=id=>S.players.find(p=>p.id===+id);
+const teamOf=p=>p&&p.role&&R[p.role]?R[p.role].t:null;
+const aliveN=()=>S.players.filter(p=>p.alive).length;
+const thr=()=>Math.ceil(aliveN()/2);
+const names=a=>a.length?a.map(p=>esc(p.name)).join(', '):'nadie';
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function toast(m){const d=document.createElement('div');d.className='toast';d.setAttribute('role','status');d.textContent=m;document.body.appendChild(d);setTimeout(()=>d.remove(),2600)}
+function commit(){save();render()}
+
+/* ============ Lógica de partida ============ */
+function deal(){
+  const n=S.players.length,c=COMP[n];
+  if(!c){toast('Hacen falta entre 5 y 15 jugadores');return}
+  let [Tn,O,M,D]=c;
+  const pool=t=>shuffle(ROLES.filter(r=>r.t===t&&S.pool.includes(r.id)));
+  const dem=pool('dem'),min=pool('min');
+  if(dem.length<D){toast('Activa al menos un Demonio');return}
+  if(min.length<M){toast('Activa al menos '+M+' Esbirro'+(M>1?'s':''));return}
+  const minPick=min.slice(0,M);
+  if(minPick.some(r=>r.mod)){O+=2;Tn-=2}
+  const out=pool('out'),town=pool('town');
+  if(out.length<O){toast('Faltan Marginados activos: necesitas '+O);return}
+  if(town.length<Tn){toast('Faltan Aldeanos activos: necesitas '+Tn);return}
+  const chosen=[...dem.slice(0,D),...minPick,...out.slice(0,O),...town.slice(0,Tn)];
+  const used=new Set(chosen.map(r=>r.id));
+  const order=shuffle(chosen);
+  S.players.forEach((p,i)=>{p.role=order[i].id;p.shown=null;p.alive=true;p.ghost=true;p.rem=[];p.seen=false});
+  const spare=shuffle(ROLES.filter(r=>r.t==='town'&&!used.has(r.id)));
+  S.players.forEach(p=>{if(p.role==='borracho'){const r=spare.shift()||shuffle(ROLES.filter(x=>x.t==='town'))[0];p.shown=r.id;used.add(r.id)}});
+  S.bluffs=shuffle(ROLES.filter(r=>(r.t==='town'||r.t==='out')&&!used.has(r.id))).slice(0,3).map(r=>r.id);
+  Object.assign(S,{started:true,day:1,night:true,done:{},noms:[],nomd:[],nomr:[],block:null,tab:'grim'});
+  U.sheet=null;U.voting=null;U.votes=[];
+  commit();toast('Roles repartidos. Empieza la noche 1');
+}
+function resetGame(){
+  S.started=false;S.day=1;S.night=true;S.done={};S.noms=[];S.nomd=[];S.nomr=[];S.block=null;S.bluffs=[];S.tab='setup';
+  S.players.forEach(p=>{p.role=null;p.shown=null;p.alive=true;p.ghost=true;p.rem=[];p.note='';p.seen=false});
+  U.sheet=null;U.voting=null;U.votes=[];commit();
+}
+function phase(){
+  if(S.night){S.night=false;S.done={};S.noms=[];S.nomd=[];S.nomr=[];S.block=null;U.voting=null;U.votes=[];S.tab='day'}
+  else{S.night=true;S.day++;S.done={};S.tab='night'}
+  commit();
+}
+function verdict(){
+  if(!S.started)return '';
+  const demAlive=S.players.some(p=>p.alive&&teamOf(p)==='dem');
+  if(!demAlive)return 'No queda ningún Demonio vivo. Ganan los Aldeanos, salvo que una Dama del Velo siga viva con 5 o más jugadores en pie.';
+  if(aliveN()<=2)return 'Quedan 2 jugadores vivos y el Demonio sigue entre ellos. Ganan los malvados.';
+  return '';
+}
+
+/* ============ Pasos de la noche ============ */
+function nightSteps(){
+  const first=S.day===1&&S.night,out=[];
+  out.push({id:'dusk',o:0,i:'🌑',n:'Anochecer',txt:'Pide a todos que cierren los ojos.'});
+  ROLES.forEach(r=>{
+    const ord=first?r.f:r.o;if(!ord)return;
+    const hs=S.players.filter(p=>p.role===r.id||p.shown===r.id);
+    if(!hs.some(p=>p.alive))return;
+    out.push({id:r.id,o:ord,i:r.i,n:r.n,t:r.t,holders:hs,txt:r.r});
+  });
+  if(first){
+    const mins=S.players.filter(p=>teamOf(p)==='min'),dems=S.players.filter(p=>teamOf(p)==='dem');
+    if(mins.length)out.push({id:'minfo',o:30,i:'🕸️',n:'Los Esbirros se reconocen',t:'min',txt:'Despierta a los Esbirros a la vez. Señala al Demonio: '+names(dems)+'. Esbirros: '+names(mins)+'.'});
+    if(dems.length)out.push({id:'dinfo',o:41,i:'🩸',n:'El Demonio conoce a sus Esbirros',t:'dem',txt:'Despierta al Demonio. Señala a sus Esbirros: '+names(mins)+'. Enséñale 3 faroles (roles buenos que no están en juego).',bluffs:true});
+  }
+  out.push({id:'dawn',o:999,i:'🌅',n:'Amanecer',txt:'Abre los ojos y anuncia quién ha muerto esta noche. Marca los fallecidos en el grimorio.'});
+  return out.sort((a,b)=>a.o-b.o);
+}
+
+/* ============ Vistas ============ */
+function header(){
+  const lab=S.started?(S.night?'Noche ':'Día ')+S.day:'Preparación';
+  return `<header class="top"><h1>Grimorio de Medianoche</h1><span class="chip ${S.started?(S.night?'night':'dayc'):''}">${S.started?(S.night?'☾ ':'☀ '):''}${lab}</span><button class="ghostbtn" data-act="hide" aria-pressed="${S.hide}" title="Oculta los roles en el grimorio">${S.hide?'Mostrar':'Ocultar'}</button></header>`;
+}
+function nav(){
+  const tabs=[['setup','✎','Preparar'],['grim','❂','Grimorio'],['night','☾','Noche'],['day','☀','Día'],['cards','♦','Tarjetas']];
+  return `<nav class="bar" aria-label="Secciones">${tabs.map(([k,g,l])=>`<button data-act="tab" data-k="${k}" ${S.tab===k?'aria-current="true"':''}><b aria-hidden="true">${g}&#xFE0E;</b>${l}</button>`).join('')}</nav>`;
+}
+function needStart(){return `<div class="panel empty"><p>Todavía no hay roles repartidos.</p><button class="btn primary" data-act="tab" data-k="setup">Ir a Preparar</button></div>`}
+
+function vSetup(){
+  const n=S.players.length,c=COMP[n];
+  const comp=c?`<div class="comp"><span class="t-town">${c[0]} Aldeanos</span><span class="t-out">${c[1]} Marginados</span><span class="t-min">${c[2]} Esbirro${c[2]>1?'s':''}</span><span class="t-dem">${c[3]} Demonio</span></div><p class="sub">Con ${n} jugadores. Si sale el Anfitrión Siniestro, +2 Marginados y −2 Aldeanos.</p>`:`<p class="verdict">Con ${n} jugadores no hay reparto estándar. Hacen falta entre 5 y 15.</p>`;
+  const plist=S.players.map((p,i)=>`<li><span class="seat">${i+1}</span><span class="nm">${esc(p.name)}</span><button class="btn sm" data-act="up" data-id="${p.id}" aria-label="Subir a ${esc(p.name)}" ${i===0?'disabled':''}>↑</button><button class="btn sm" data-act="down" data-id="${p.id}" aria-label="Bajar a ${esc(p.name)}" ${i===n-1?'disabled':''}>↓</button><button class="btn sm danger" data-act="rm" data-id="${p.id}" aria-label="Quitar a ${esc(p.name)}">✕</button></li>`).join('');
+  const groups=['town','out','min','dem'].map(t=>{
+    const items=ROLES.filter(r=>r.t===t);
+    const on=items.filter(r=>S.pool.includes(r.id)).length;
+    return `<details class="t-${t}" ${t==='min'||t==='dem'?'open':''}><summary class="lbl" style="cursor:pointer;padding:6px 0;color:var(--tc)">${TEAMS[t].p} · ${on}/${items.length}</summary>${items.map(r=>`<label class="pick t-${t}"><input type="checkbox" data-chg="pool" data-id="${r.id}" ${S.pool.includes(r.id)?'checked':''}><span class="ic">${r.i}</span><span class="tx"><b>${esc(r.n)}</b><small>${esc(r.a)}</small></span></label>`).join('')}</details>`;
+  }).join('');
+  return `<div class="wrap">
+  <section class="panel"><h2>Jugadores</h2><p class="sub">El orden es el de los asientos, en círculo. Los nombres son de ejemplo: cámbialos por los de tu mesa.</p>
+   <ul class="plist">${plist}</ul>
+   <div class="row"><input type="text" id="newname" placeholder="Nombre del jugador" maxlength="24" autocomplete="off" style="flex:1;min-width:140px"><button class="btn" data-act="add">Añadir</button></div>
+   <div class="row" style="margin-top:8px"><button class="btn sm" data-act="shuf">Barajar asientos</button><button class="btn sm danger" data-act="clear">Vaciar lista</button></div>
+   ${comp}
+  </section>
+  <section class="panel"><h2>La Noche de las Ánimas</h2><p class="sub">Script propio con ${ROLES.length} personajes. Desmarca los que no quieras que salgan en la partida.</p>${groups}</section>
+  <button class="btn primary block" data-act="deal">${S.started?'Volver a repartir roles':'Repartir roles y empezar'}</button>
+  ${S.started?'<button class="btn danger block" data-act="reset">Nueva partida (borrar roles)</button>':''}
+  <p class="legal">Proyecto de aficionados con personajes originales, inspirado en la mecánica de Blood on the Clocktower. No está afiliado a The Pandemonium Institute.</p>
+  </div>`;
+}
+
+function ringSVG(){
+  let t='';
+  for(let i=0;i<48;i++){const a=i*Math.PI/24,r1=i%4===0?45.6:47,r2=48.6;t+=`<line x1="${(50+r1*Math.cos(a)).toFixed(2)}" y1="${(50+r1*Math.sin(a)).toFixed(2)}" x2="${(50+r2*Math.cos(a)).toFixed(2)}" y2="${(50+r2*Math.sin(a)).toFixed(2)}"/>`}
+  return `<svg class="runes" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="48.6"/><circle cx="50" cy="50" r="27"/><circle cx="50" cy="50" r="25.6" stroke-dasharray="2.5 1.4"/>${t}</svg>`;
+}
+function vGrim(){
+  const n=S.players.length;if(!n)return `<div class="panel empty">No hay jugadores. Añádelos en Preparar.</div>`;
+  const sz=Math.min(19,215/Math.max(n,5)),R0=37;
+  const toks=S.players.map((p,i)=>{
+    const a=-Math.PI/2+i*2*Math.PI/n,x=50+R0*Math.cos(a),y=50+R0*Math.sin(a);
+    const r=p.role?R[p.role]:null,tm=r?r.t:null;
+    const glyph=S.hide?'☾':(r?r.i:'?');
+    const tc=S.hide||!tm?'var(--dim)':`var(--${tm})`;
+    return `<button class="tok ${p.alive?'':'dead'}" style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%;--sz:${sz.toFixed(2)};--tc:${tc}" data-act="sheet" data-id="${p.id}" aria-label="${esc(p.name)}${r&&!S.hide?', '+esc(r.n):''}${p.alive?'':', muerto'}"><span class="medal">${glyph}${!p.alive&&p.ghost?'<i class="pip" title="Conserva su voto fantasma"></i>':''}${p.rem.length?`<span class="bdg">${p.rem.length}</span>`:''}${!S.hide&&p.shown?'<span class="mask">🎭</span>':''}</span><span class="tname">${esc(p.name)}</span></button>`;
+  }).join('');
+  const v=verdict();
+  return `<div class="wrap">
+   ${v?`<div class="verdict" role="status">${esc(v)}</div>`:''}
+   <div class="ring">${ringSVG()}${toks}<div class="core"><div class="moon">${S.night?'🌕':'🎃'}</div><div class="ph">${S.started?(S.night?'Noche ':'Día ')+S.day:'Sin repartir'}</div><div class="st">${aliveN()} vivos · hacen falta ${thr()} votos</div></div></div>
+   <div class="legend"><span class="t-town"><i></i>Aldeano</span><span class="t-out"><i></i>Marginado</span><span class="t-min"><i></i>Esbirro</span><span class="t-dem"><i></i>Demonio</span><span>● voto fantasma</span><span>🎭 cree ser otro</span></div>
+   ${S.started?`<button class="btn primary block" data-act="phase">${S.night?'☀ Amanece':'☾ Anochece'}</button>`:needStart()}
+   <p class="sub" style="text-align:center">Toca una ficha para cambiar su rol, marcarla muerta o poner recordatorios.</p>
+  </div>`;
+}
+
+function vNight(){
+  if(!S.started)return needStart();
+  if(!S.night)return `<div class="wrap"><div class="panel empty"><p>Es de día. La noche empieza cuando pulses Anochece.</p><button class="btn primary" data-act="phase">☾ Anochece</button></div></div>`;
+  const steps=nightSteps();
+  const html=steps.map(s=>{
+    const done=S.done[s.id];
+    const who=s.holders?s.holders.map(p=>{
+      const tags=[];if(!p.alive)tags.push('muerto');if(p.shown===s.id&&p.role!==s.id)tags.push('es el Borracho: su habilidad falla');
+      return `<b>${esc(p.name)}</b>${tags.length?` <em>(${tags.join(', ')})</em>`:''}`}).join(', '):'';
+    const bl=s.bluffs?`<div class="faro">${S.bluffs.map(id=>`<span>${R[id].i} ${esc(R[id].n)}</span>`).join('')}</div>`:'';
+    return `<div class="step ${done?'done':''} ${s.t?'t-'+s.t:''}"><span class="ic" aria-hidden="true">${s.i}</span><h3>${esc(s.n)}</h3><button class="btn sm" data-act="done" data-id="${s.id}" aria-pressed="${!!done}">${done?'Hecho ✓':'Marcar'}</button>${who?`<div class="who">${who}</div>`:'<div></div>'}<div class="rem">${esc(s.txt)}${bl}</div></div>`;
+  }).join('');
+  const pend=steps.filter(s=>!S.done[s.id]).length;
+  return `<div class="wrap"><div class="panel"><h2>Noche ${S.day}${S.day===1?' · primera noche':''}</h2><p class="sub">${pend?pend+' pasos pendientes':'Todos los pasos hechos'}. Orden de despertar para los personajes en juego.</p></div>${html}<button class="btn primary block" data-act="phase">☀ Amanece</button></div>`;
+}
+
+function vDay(){
+  if(!S.started)return needStart();
+  const t=thr(),blk=S.block?P(S.block.id):null,v=verdict();
+  const timer=`<section class="panel timer ${T.done?'end':''}" id="timerbox"><h2>Cuenta atrás</h2><div class="big" id="tmr">${fmt(T.left)}</div>
+   <div class="row" style="justify-content:center;margin-top:10px"><button class="btn" data-act="tstart">${T.end?'Pausar':'Iniciar'}</button><button class="btn" data-act="treset">Reiniciar</button></div>
+   <div class="row" style="justify-content:center;margin-top:8px">${[1,3,5,10].map(m=>`<button class="btn sm" data-act="tset" data-m="${m}">${m} min</button>`).join('')}</div></section>`;
+  if(S.night)return `<div class="wrap"><div class="panel empty"><p>Es de noche. Las nominaciones se abren al amanecer.</p><button class="btn primary" data-act="phase">☀ Amanece</button></div>${timer}</div>`;
+  const tiles=`<div class="tiles"><div class="tile"><b>${aliveN()}</b><span>VIVOS</span></div><div class="tile"><b>${t}</b><span>VOTOS PARA EJECUTAR</span></div><div class="tile"><b>${blk?S.block.n:'–'}</b><span>${blk?'EN LA HOGUERA: '+esc(blk.name).toUpperCase():'HOGUERA VACÍA'}</span></div></div>`;
+  let nomUI;
+  if(U.voting){
+    const to=P(U.voting.to),from=P(U.voting.from),ps=S.players,idx=ps.indexOf(to);
+    const ord=[...ps.slice(idx+1),...ps.slice(0,idx+1)];
+    const cnt=U.votes.length;
+    nomUI=`<section class="panel"><h2>Votación</h2><p><b>${esc(from.name)}</b> nomina a <b>${esc(to.name)}</b>. Se vota en sentido horario, empezando por quien está tras el nominado.</p>
+     <div class="big" style="margin-top:6px">${cnt} <span class="sub" style="font-size:22px">de ${t} necesarios</span></div>
+     <div class="bar2 ${cnt>=t?'ok':''}"><i style="width:${Math.min(100,t?cnt/t*100:0)}%"></i></div>
+     ${ord.map(p=>{const can=p.alive||p.ghost,on=U.votes.includes(p.id);return `<button class="vote" data-act="vote" data-id="${p.id}" aria-pressed="${on}" ${can?'':'disabled'}><span class="ck" aria-hidden="true">${on?'✓':''}</span><span style="flex:1">${esc(p.name)}</span><span class="sub">${p.alive?'':(p.ghost?'muerto · voto fantasma':'muerto · sin voto')}</span></button>`}).join('')}
+     <div class="row" style="margin-top:12px"><button class="btn primary" data-act="closevote">Cerrar votación</button><button class="btn" data-act="cancelvote">Cancelar</button></div></section>`;
+  }else{
+    const fr=S.players.filter(p=>p.alive&&!S.nomr.includes(p.id)),tt=S.players.filter(p=>!S.nomd.includes(p.id));
+    if(!fr.some(p=>p.id===+U.from))U.from=fr[0]?String(fr[0].id):'';
+    if(!tt.some(p=>p.id===+U.to))U.to=tt[0]?String(tt[0].id):'';
+    nomUI=`<section class="panel"><h2>Nominar</h2><p class="sub">Cada jugador vivo nomina una vez por día y solo puede ser nominado una vez.</p>
+     <div class="field" style="margin-top:8px"><label class="lbl" for="selfrom">Nominador</label><select id="selfrom" data-chg="from">${fr.map(p=>`<option value="${p.id}" ${+U.from===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></div>
+     <div class="field" style="margin-top:8px"><label class="lbl" for="selto">Nominado</label><select id="selto" data-chg="to">${tt.map(p=>`<option value="${p.id}" ${+U.to===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></div>
+     <button class="btn primary block" style="margin-top:12px" data-act="openvote" ${fr.length&&tt.length?'':'disabled'}>Abrir votación</button></section>`;
+  }
+  const nl=S.noms.length?`<section class="panel"><h2>Nominaciones de hoy</h2>${S.noms.map(m=>`<div class="nomli">${esc(P(m.from)?.name)} → <b>${esc(P(m.to)?.name)}</b>: ${m.n} voto${m.n===1?'':'s'}${m.n>=m.t?' (alcanza el umbral)':''}</div>`).join('')}</section>`:'';
+  const exe=blk?`<section class="panel" style="border-color:var(--ember)"><h2>En la hoguera: ${esc(blk.name)}</h2><p>${S.block.n} votos. Si nadie lo supera antes del anochecer, será ejecutado.</p><div class="row"><button class="btn primary" data-act="exec">Ejecutar a ${esc(blk.name)}</button><button class="btn" data-act="spare">Perdonar</button></div></section>`:'';
+  return `<div class="wrap">${v?`<div class="verdict" role="status">${esc(v)}</div>`:''}${tiles}${exe}${nomUI}${nl}${timer}<button class="btn primary block" data-act="phase">☾ Anochece</button></div>`;
+}
+const fmt=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+
+function vCards(){
+  if(!S.started)return needStart();
+  const seen=S.players.filter(p=>p.seen).length;
+  return `<div class="wrap"><div class="panel"><h2>Tarjetas secretas</h2><p class="sub">Pasa el móvil a cada jugador. Verá una pantalla de aviso antes de enseñar su rol, para que nadie lo vea de reojo. ${seen}/${S.players.length} jugadores lo han visto.</p></div>
+  <div class="pgrid">${S.players.map(p=>`<button class="pbtn ${p.seen?'seen':''}" data-act="showcard" data-id="${p.id}"><b>${esc(p.name)}</b><span class="sub">${p.seen?'ya visto ✓':'ver rol'}</span></button>`).join('')}</div>
+  <button class="btn" data-act="unsee">Marcar todos como no vistos</button></div>`;
+}
+
+function cardHTML(p){
+  const id=p.shown||p.role,r=R[id];
+  if(!r)return `<div class="card"><h2>Sin rol</h2><p class="ab">El Narrador aún no te ha asignado personaje.</p></div>`;
+  let ex='';
+  if(!p.shown){
+    const dems=S.players.filter(q=>teamOf(q)==='dem'),mins=S.players.filter(q=>teamOf(q)==='min'&&q.id!==p.id);
+    if(r.t==='min')ex=`<div class="ex"><b>El Demonio:</b> ${names(dems)}.${mins.length?`<br><b>Otros Esbirros:</b> ${names(mins)}.`:''}</div>`;
+    if(r.t==='dem')ex=`<div class="ex"><b>Tus Esbirros:</b> ${names(mins.concat(S.players.filter(q=>teamOf(q)==='min'&&q.id===p.id)))}.<br><b>Faroles (roles que no están en juego):</b> ${S.bluffs.map(b=>R[b].i+' '+esc(R[b].n)).join(' · ')}.</div>`;
+  }
+  const tc=`var(--${r.t})`;
+  return `<div class="card" style="--tc:${tc}"><div class="ct">${TEAMS[r.t].n.toUpperCase()}</div><div class="ci">${r.i}</div><h2>${esc(r.n)}</h2><p class="ab">${esc(r.a)}</p>${ex}</div>`;
+}
+
+function overlays(){
+  let h='';
+  if(U.sheet){
+    const p=P(U.sheet);
+    if(p){
+      const opts=(sel,none)=>`<option value="">${none}</option>`+['town','out','min','dem'].map(t=>`<optgroup label="${TEAMS[t].p}">${ROLES.filter(r=>r.t===t).map(r=>`<option value="${r.id}" ${sel===r.id?'selected':''}>${r.i} ${esc(r.n)}</option>`).join('')}</optgroup>`).join('');
+      const idx=S.players.indexOf(p);
+      h+=`<div class="overlay" role="dialog" aria-modal="true" aria-label="Ficha de ${esc(p.name)}"><div class="bd" data-act="closesheet"></div><div class="sheet" id="sheetbody">
+       <div class="hd"><input type="text" id="pname" data-chg="pname" value="${esc(p.name)}" maxlength="24" aria-label="Nombre"><button class="btn" data-act="closesheet" aria-label="Cerrar">✕</button></div>
+       <div class="field"><label class="lbl" for="prole">Personaje</label><select id="prole" data-chg="prole">${opts(p.role,'— sin personaje —')}</select></div>
+       <div class="field"><label class="lbl" for="pshown">Qué tarjeta ve (para el Borracho)</label><select id="pshown" data-chg="pshown">${opts(p.shown,'Su propio personaje')}</select></div>
+       <div class="row"><button class="btn ${p.alive?'':'danger'}" data-act="alive" data-id="${p.id}">${p.alive?'Vivo · marcar muerto':'Muerto · revivir'}</button>${p.alive?'':`<button class="btn" data-act="ghostv" data-id="${p.id}">Voto fantasma: ${p.ghost?'disponible':'gastado'}</button>`}</div>
+       <div class="field"><span class="lbl">Recordatorios</span><div class="chips">${CHIPS.map(c=>`<button class="chipb" data-act="chip" data-id="${p.id}" data-c="${esc(c)}" aria-pressed="${p.rem.includes(c)}">${esc(c)}</button>`).join('')}</div></div>
+       <div class="field"><label class="lbl" for="pnote">Notas</label><textarea id="pnote" data-chg="pnote" placeholder="Lo que dijo, lo que sospechas…">${esc(p.note)}</textarea></div>
+       <div class="row"><button class="btn" data-act="showcard" data-id="${p.id}">Ver su tarjeta</button><button class="btn sm" data-act="seatl" data-id="${p.id}" ${idx===0?'disabled':''}>← Asiento</button><button class="btn sm" data-act="seatr" data-id="${p.id}" ${idx===S.players.length-1?'disabled':''}>Asiento →</button><button class="btn sm danger" data-act="rm2" data-id="${p.id}">Quitar</button></div>
+      </div></div>`;
+    }
+  }
+  if(U.card){
+    const p=P(U.card);
+    if(p){
+      h+=`<div class="overlay center" role="dialog" aria-modal="true" aria-label="Tarjeta de ${esc(p.name)}"><div class="bd"></div>`;
+      if(U.stage===0)h+=`<div class="cover"><div class="ph flame">🕯️</div><h2>Pasa el móvil a ${esc(p.name)}</h2><p class="sub">Que nadie más mire la pantalla.</p><button class="btn primary block" data-act="reveal">Soy ${esc(p.name)}: ver mi rol</button><button class="btn" data-act="closecard">Cancelar</button></div>`;
+      else h+=`<div class="cardwrap">${cardHTML(p)}<button class="btn primary block" style="max-width:360px" data-act="hidecard">Ocultar y devolver el móvil</button></div>`;
+      h+=`</div>`;
+    }
+  }
+  if(U.confirm){
+    h+=`<div class="overlay center" role="alertdialog" aria-modal="true"><div class="bd" data-act="no"></div><div class="cover"><h2>${esc(U.confirm.t)}</h2><div class="row"><button class="btn danger" data-act="yes">Confirmar</button><button class="btn" data-act="no">Cancelar</button></div></div></div>`;
+  }
+  return h;
+}
+
+function render(){
+  const old=$('#main'),st=old?old.scrollTop:0,sh=$('#sheetbody'),sst=sh?sh.scrollTop:0;
+  const views={setup:vSetup,grim:vGrim,night:vNight,day:vDay,cards:vCards};
+  $('#app').innerHTML=header()+`<main id="main">${(views[S.tab]||vSetup)()}</main>`+nav()+overlays();
+  const m=$('#main');if(m)m.scrollTop=st;
+  const s2=$('#sheetbody');if(s2)s2.scrollTop=sst;
+  if(U.focus){const f=document.getElementById(U.focus);if(f)f.focus();U.focus=null}
+}
+
+/* ============ Acciones ============ */
+const A={
+  tab:(d)=>{S.tab=d.k;commit()},
+  hide:()=>{S.hide=!S.hide;commit()},
+  add:()=>{const i=$('#newname');const v=(i&&i.value||'').trim();if(!v){toast('Escribe un nombre');return}S.players.push({id:S.nextId++,name:v,role:null,shown:null,alive:true,ghost:true,rem:[],note:'',seen:false});U.focus='newname';commit()},
+  up:(d)=>{const a=S.players,i=a.findIndex(p=>p.id===+d.id);if(i>0){[a[i-1],a[i]]=[a[i],a[i-1]];commit()}},
+  down:(d)=>{const a=S.players,i=a.findIndex(p=>p.id===+d.id);if(i<a.length-1){[a[i+1],a[i]]=[a[i],a[i+1]];commit()}},
+  seatl:(d)=>A.up(d),seatr:(d)=>A.down(d),
+  rm:(d)=>{S.players=S.players.filter(p=>p.id!==+d.id);commit()},
+  rm2:(d)=>{U.confirm={t:'¿Quitar a '+P(d.id).name+' de la partida?',act:()=>{S.players=S.players.filter(p=>p.id!==+d.id);U.sheet=null}};render()},
+  shuf:()=>{S.players=shuffle(S.players);commit()},
+  clear:()=>{U.confirm={t:'¿Vaciar la lista de jugadores?',act:()=>{S.players=[];S.started=false}};render()},
+  deal:()=>{if(S.started){U.confirm={t:'Ya hay una partida en curso. ¿Repartir de nuevo y empezar otra?',act:deal};render()}else deal()},
+  reset:()=>{U.confirm={t:'¿Borrar roles y empezar una partida nueva con estos jugadores?',act:resetGame};render()},
+  yes:()=>{const c=U.confirm;U.confirm=null;if(c){c.act();commit()}else render()},
+  no:()=>{U.confirm=null;render()},
+  sheet:(d)=>{U.sheet=+d.id;render()},
+  closesheet:()=>{U.sheet=null;render()},
+  alive:(d)=>{const p=P(d.id);p.alive=!p.alive;if(p.alive)p.ghost=true;commit()},
+  ghostv:(d)=>{const p=P(d.id);p.ghost=!p.ghost;commit()},
+  chip:(d)=>{const p=P(d.id),i=p.rem.indexOf(d.c);if(i>=0)p.rem.splice(i,1);else p.rem.push(d.c);commit()},
+  phase:()=>phase(),
+  done:(d)=>{S.done[d.id]=!S.done[d.id];commit()},
+  showcard:(d)=>{U.card=+d.id;U.stage=0;U.sheet=null;render()},
+  reveal:()=>{U.stage=1;render()},
+  hidecard:()=>{const p=P(U.card);if(p)p.seen=true;U.card=null;U.stage=0;commit()},
+  closecard:()=>{U.card=null;U.stage=0;render()},
+  unsee:()=>{S.players.forEach(p=>p.seen=false);commit()},
+  openvote:()=>{if(!U.from||!U.to)return;U.voting={from:+U.from,to:+U.to};U.votes=[];render()},
+  cancelvote:()=>{U.voting=null;U.votes=[];render()},
+  vote:(d)=>{const id=+d.id,i=U.votes.indexOf(id);if(i>=0)U.votes.splice(i,1);else U.votes.push(id);render()},
+  closevote:()=>{
+    const v=U.voting,cnt=U.votes.length,t=thr();if(!v)return;
+    S.noms.push({from:v.from,to:v.to,n:cnt,t});S.nomd.push(v.to);S.nomr.push(v.from);
+    U.votes.forEach(id=>{const p=P(id);if(p&&!p.alive)p.ghost=false});
+    let msg=cnt+' voto'+(cnt===1?'':'s')+': no alcanza el umbral ('+t+')';
+    if(cnt>=t){
+      if(!S.block||cnt>S.block.n){S.block={id:v.to,n:cnt};msg=P(v.to).name+' va a la hoguera con '+cnt+' votos'}
+      else if(cnt===S.block.n){S.block=null;msg='Empate: nadie queda en la hoguera'}
+      else msg='No supera los '+S.block.n+' votos de la hoguera';
+    }
+    U.voting=null;U.votes=[];commit();toast(msg);
+  },
+  exec:()=>{const p=P(S.block.id);p.alive=false;S.block=null;commit();toast(p.name+' ha sido ejecutado. Revisa si termina la partida')},
+  spare:()=>{S.block=null;commit()},
+  tstart:()=>{
+    try{T.ac=T.ac||new (window.AudioContext||window.webkitAudioContext)();T.ac.resume&&T.ac.resume()}catch(e){}
+    if(T.end){T.left=Math.max(0,Math.ceil((T.end-Date.now())/1000));T.end=null}
+    else{if(T.left<=0)T.left=T.total;T.done=false;T.end=Date.now()+T.left*1000}
+    render();
+  },
+  treset:()=>{T.end=null;T.left=T.total;T.done=false;render()},
+  tset:(d)=>{T.total=T.left=+d.m*60;T.end=null;T.done=false;render()}
+};
+const C={
+  pool:(d,el)=>{const i=S.pool.indexOf(d.id);if(el.checked&&i<0)S.pool.push(d.id);if(!el.checked&&i>=0)S.pool.splice(i,1);commit()},
+  from:(d,el)=>{U.from=el.value},
+  to:(d,el)=>{U.to=el.value},
+  pname:(d,el)=>{const p=P(U.sheet);if(p&&el.value.trim()){p.name=el.value.trim();commit()}},
+  prole:(d,el)=>{const p=P(U.sheet);p.role=el.value||null;
+    if(p.role==='borracho'&&!p.shown){const used=new Set(S.players.map(q=>q.role));const c=shuffle(ROLES.filter(r=>r.t==='town'&&!used.has(r.id)))[0];if(c)p.shown=c.id}
+    commit()},
+  pshown:(d,el)=>{const p=P(U.sheet);p.shown=el.value||null;commit()},
+  pnote:(d,el)=>{const p=P(U.sheet);p.note=el.value;save()}
+};
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-act]');
+  if(!el||/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName))return;
+  const f=A[el.dataset.act];if(f)f(el.dataset,el);
+});
+document.addEventListener('change',e=>{
+  const el=e.target.closest('[data-chg]');if(!el)return;
+  const f=C[el.dataset.chg];if(f)f(el.dataset,el);
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&e.target.id==='newname'){e.preventDefault();A.add()}
+  if(e.key==='Escape'){if(U.confirm){A.no()}else if(U.sheet){A.closesheet()}else if(U.card){A.closecard()}}
+});
+
+/* ============ Temporizador ============ */
+function beep(){
+  try{
+    const a=T.ac;if(!a)return;
+    [0,0.35,0.7].forEach(dt=>{const o=a.createOscillator(),g=a.createGain();o.type='triangle';o.frequency.value=392;o.connect(g);g.connect(a.destination);const t0=a.currentTime+dt;g.gain.setValueAtTime(.25,t0);g.gain.exponentialRampToValueAtTime(.001,t0+.3);o.start(t0);o.stop(t0+.32)});
+  }catch(e){}
+  try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}
+}
+setInterval(()=>{
+  if(!T.end)return;
+  T.left=Math.max(0,Math.ceil((T.end-Date.now())/1000));
+  const el=$('#tmr');if(el)el.textContent=fmt(T.left);
+  if(T.left<=0){T.end=null;T.done=true;beep();const b=$('#timerbox');if(b)b.classList.add('end');toast('Se acabó el tiempo')}
+},250);
+
+try{if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(function(){})}catch(e){}
+/* ============ Arranque ============ */
+function start(d){
+  S=(d&&d.S)||load()||fresh();
+  if(!S.players)S=fresh();
+  render();
+}
+try{window.claude&&window.claude.hot&&window.claude.hot.snapshot&&window.claude.hot.snapshot(()=>({S}))}catch(e){}
+try{
+  if(window.claude&&window.claude.hot&&window.claude.hot.ready)window.claude.hot.ready(start);
+  else start((window.claude&&window.claude.hot&&window.claude.hot.data)||{});
+}catch(e){start({})}
+</script>
+</body>
+</html>
