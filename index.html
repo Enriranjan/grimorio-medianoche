@@ -632,7 +632,7 @@ function overlays(){
       h+=`<div class="overlay" role="dialog" aria-modal="true" aria-label="Ficha de ${esc(p.name)}"><div class="bd" data-act="closesheet"></div><div class="sheet" id="sheetbody">
        <div class="hd"><input type="text" id="pname" data-chg="pname" value="${esc(p.name)}" maxlength="24" aria-label="Nombre"><button class="btn" data-act="closesheet" aria-label="Cerrar">✕</button></div>
        <div class="field"><label class="lbl" for="prole">Personaje</label><select id="prole" data-chg="prole">${opts(p.role,'— sin personaje —')}</select></div>
-       <div class="field"><label class="lbl" for="pshown">Qué tarjeta ve (para el Borracho)</label><select id="pshown" data-chg="pshown">${opts(p.shown,'Su propio personaje')}</select></div>
+       ${p.role==='borracho'?`<div class="field"><label class="lbl" for="pshown">🍾 Qué Aldeano cree ser el Borracho</label><select id="pshown" data-chg="pshown"><option value="">— elige un Aldeano —</option>${ROLES.filter(r=>r.t==='town').map(r=>`<option value="${r.id}" ${p.shown===r.id?'selected':''}>${r.i} ${esc(r.n)}</option>`).join('')}</select></div>`:''}
        <div class="row"><button class="btn ${p.alive?'':'danger'}" data-act="alive" data-id="${p.id}">${p.alive?'Vivo · marcar muerto':'Muerto · revivir'}</button>${p.alive?'':`<button class="btn" data-act="ghostv" data-id="${p.id}">Voto fantasma: ${p.ghost?'disponible':'gastado'}</button>`}</div>
        <div class="field"><span class="lbl">Recordatorios</span><div class="chips">${CHIPS.map(c=>`<button class="chipb" data-act="chip" data-id="${p.id}" data-c="${esc(c)}" aria-pressed="${p.rem.includes(c)}">${esc(c)}</button>`).join('')}</div></div>
        <div class="field"><label class="lbl" for="pnote">Notas</label><textarea id="pnote" data-chg="pnote" placeholder="Lo que dijo, lo que sospechas…">${esc(p.note)}</textarea></div>
@@ -751,7 +751,8 @@ const C={
   to:(d,el)=>{U.to=el.value},
   pname:(d,el)=>{const p=P(U.sheet);if(p&&el.value.trim()){p.name=el.value.trim();commit()}},
   prole:(d,el)=>{const p=P(U.sheet);p.role=el.value||null;
-    if(p.role==='borracho'&&!p.shown){const used=new Set(S.players.map(q=>q.role));const c=shuffle(ROLES.filter(r=>r.t==='town'&&!used.has(r.id)))[0];if(c)p.shown=c.id}
+    if(p.role!=='borracho')p.shown=null;
+    else if(!p.shown){const used=new Set(S.players.map(q=>q.role));const c=shuffle(ROLES.filter(r=>r.t==='town'&&!used.has(r.id)))[0];if(c)p.shown=c.id}
     commit()},
   pshown:(d,el)=>{const p=P(U.sheet);p.shown=el.value||null;commit()},
   pnote:(d,el)=>{const p=P(U.sheet);p.note=el.value;save()}
