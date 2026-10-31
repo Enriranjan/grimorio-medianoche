@@ -98,6 +98,21 @@ textarea{min-height:64px;resize:vertical}
 .pick .ic{font-size:24px;flex:none;width:1.4em;text-align:center}
 .pick .tx b{font-weight:400;color:var(--tc);font-family:var(--label)}
 .pick .tx small{display:block;color:var(--dim);font-size:15px;line-height:1.3}
+.rec{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.recrow{display:grid;grid-template-columns:1fr auto auto auto auto;gap:2px 10px;align-items:baseline;padding:7px 10px;border:1px solid var(--line);border-left:4px solid var(--tc);border-radius:10px;background:var(--ink);font-size:15px}
+.recrow>b{font-family:var(--label);font-weight:400;color:var(--tc)}
+.recrow span b{color:var(--bone)}
+.recrow span{color:var(--dim)}
+.recrow small{grid-column:1/-1;color:var(--dim);font-size:13px}
+.recrow .ok{color:var(--out)}.recrow .meh{color:#ffb35c}.recrow .bad{color:#ff8d9b}
+@media (max-width:480px){.recrow{grid-template-columns:auto auto auto 1fr}.recrow>b{grid-column:1/-1}}
+.preset{margin-top:12px;border:1px solid var(--ember);border-radius:12px;padding:10px 12px;background:rgba(242,138,31,.06)}
+.rchip{font-size:14px;padding:2px 9px;border-radius:999px;border:1px solid var(--tc);color:var(--tc)}
+.rtab{width:100%;border-collapse:collapse;margin:8px 0;font-variant-numeric:tabular-nums;text-align:center}
+.rtab th{font-family:var(--label);font-weight:400;color:var(--dim);font-size:14px;padding:4px}
+.rtab th[class],.rtab td[class]{color:var(--tc)}
+.rtab td{padding:4px;border-top:1px solid var(--line)}
+.rtab tr.cur td{background:rgba(242,138,31,.15);font-weight:700}
 .legal{font-size:14px;color:var(--dim)}
 
 /* Grimorio */
@@ -321,9 +336,10 @@ function deal(){
   const dem=pool('dem'),min=pool('min');
   if(dem.length<D){toast('Activa al menos un Demonio');return}
   if(min.length<M){toast('Activa al menos '+M+' Esbirro'+(M>1?'s':''));return}
-  const minPick=min.slice(0,M);
-  if(minPick.some(r=>r.mod)){O+=2;Tn-=2}
   const out=pool('out'),town=pool('town');
+  let minPick=min.slice(0,M);
+  if(minPick.some(r=>r.mod)&&(out.length<O+2||Tn<3)){const alt=min.filter(r=>!r.mod);if(alt.length>=M)minPick=alt.slice(0,M)}
+  if(minPick.some(r=>r.mod)){O+=2;Tn-=2}
   if(out.length<O){toast('Faltan Marginados activos: necesitas '+O);return}
   if(town.length<Tn){toast('Faltan Aldeanos activos: necesitas '+Tn);return}
   const chosen=[...dem.slice(0,D),...minPick,...out.slice(0,O),...town.slice(0,Tn)];
@@ -386,9 +402,49 @@ function nav(){
 }
 function needStart(){return `<div class="panel empty"><p>Todavía no hay roles repartidos.</p><button class="btn primary" data-act="tab" data-k="setup">Ir a Preparar</button></div>`}
 
+/* ---- Recomendaciones de personajes según jugadores ---- */
+const PRESETS=[
+ {max:6,n:'Mesa pequeña (5–6)',d:'Personajes sencillos y con información clara. Sin Anfitrión: con tan pocos jugadores dejaría casi sin Aldeanos.',
+  ids:['vidente','farolero','cronista','detective','bibliotecaria','guardiana','soldado','borracho','santo','envenenadora','espia','calabaza']},
+ {max:9,n:'Mesa media (7–9)',d:'Entra el Sepulturero y la Virgen para dar juego de día, más Marginados y un segundo Demonio para variar.',
+  ids:['vidente','farolero','cronista','detective','bibliotecaria','guardiana','sepulturero','soldado','virgen','borracho','santo','eremita','envenenadora','bruja','espia','calabaza','jinete']},
+ {max:12,n:'Mesa grande (10–12)',d:'Casi todo el script. Entra el Anfitrión, que cambia el reparto, y la Dama del Velo, que alarga la partida.',
+  ids:['vidente','farolero','cronista','detective','bibliotecaria','guardiana','sepulturero','soldado','virgen','cazador','alcaldesa','costurera','borracho','santo','eremita','torpe','envenenadora','bruja','espia','dama','anfitrion','calabaza','jinete']},
+ {max:99,n:'Mesa muy grande (13–15)',d:'Todos los personajes del script.',ids:ROLES.map(r=>r.id)}
+];
+const presetFor=n=>PRESETS.find(p=>n<=p.max);
+function recNeed(n){
+  const c=COMP[n];if(!c)return null;
+  const [Tn,O,M]=c,anf=S.pool.includes('anfitrion');
+  return {town:Math.min(13,Tn+3),out:Math.min(4,O+(anf?2:0)+1),min:Math.min(5,M+1),dem:n>=7?2:1,c};
+}
+function vRec(){
+  const n=S.players.length,c=COMP[n];
+  if(!c)return `<section class="panel"><h2>Personajes recomendados</h2><p class="verdict">Con ${n} jugadores no hay reparto estándar. Hacen falta entre 5 y 15.</p></section>`;
+  const need=recNeed(n),pr=presetFor(n);
+  const why={town:'los que salen + 3 para los faroles del Demonio',out:'los que salen + 1 de margen'+(S.pool.includes('anfitrion')?' (+2 por si sale el Anfitrión)':''),min:'los que salen + 1, para que no se sepa cuál hay',dem:n>=7?'2 para que no se sepa cuál es':'con 1 basta'};
+  const rows=['town','out','min','dem'].map((t,k)=>{
+    const have=ROLES.filter(r=>r.t===t&&S.pool.includes(r.id)).length,inp=c[k],ok=have>=need[t];
+    return `<div class="recrow t-${t}"><b>${TEAMS[t].p}</b><span>salen <b>${inp}</b></span><span>marcados <b>${have}</b></span><span>recomendado <b>${need[t]}+</b></span><span class="${ok?'ok':(have>=inp?'meh':'bad')}">${ok?'✓':(have>=inp?'⚠ justo':'✕ faltan')}</span><small>${why[t]}</small></div>`;
+  }).join('');
+  const same=pr.ids.length===S.pool.length&&pr.ids.every(id=>S.pool.includes(id));
+  const table=Object.keys(COMP).map(Number).map(k=>{const [a,b,m,d]=COMP[k],p=presetFor(k);return `<tr${k===n?' class="cur"':''}><td>${k}</td><td class="t-town">${a}</td><td class="t-out">${b}</td><td class="t-min">${m}</td><td class="t-dem">${d}</td><td>${p.ids.length}</td></tr>`}).join('');
+  return `<section class="panel"><h2>Personajes recomendados</h2>
+   <p class="sub">Con <b>${n} jugadores</b> entran en juego:</p>
+   <div class="comp"><span class="t-town">${c[0]} Aldeanos</span><span class="t-out">${c[1]} Marginados</span><span class="t-min">${c[2]} Esbirro${c[2]>1?'s':''}</span><span class="t-dem">${c[3]} Demonio</span></div>
+   <p class="sub" style="margin-top:8px">Conviene marcar más personajes de los que salen: así nadie puede deducir qué hay en juego y el Demonio tiene 3 faroles (personajes buenos que no están). Si sale el Anfitrión Siniestro, +2 Marginados y −2 Aldeanos.</p>
+   <div class="rec">${rows}</div>
+   <div class="preset"><div class="lbl" style="color:var(--ember)">SELECCIÓN RECOMENDADA · ${esc(pr.n).toUpperCase()}</div><p class="sub" style="margin:4px 0">${esc(pr.d)} ${pr.ids.length} personajes.</p>
+    <div class="chips">${pr.ids.map(id=>`<span class="rchip t-${R[id].t}">${R[id].i} ${esc(R[id].n)}</span>`).join('')}</div>
+    <button class="btn ${same?'':'primary'} block" style="margin-top:10px" data-act="preset" ${same?'disabled':''}>${same?'✓ Ya tienes esta selección':'Aplicar selección recomendada'}</button></div>
+   <details class="rules" style="margin-top:10px"><summary>Tabla de reparto (5–15 jugadores)</summary>
+    <table class="rtab"><thead><tr><th>Jug.</th><th class="t-town">Ald.</th><th class="t-out">Marg.</th><th class="t-min">Esb.</th><th class="t-dem">Dem.</th><th>Recom.</th></tr></thead><tbody>${table}</tbody></table>
+    <p class="sub" style="font-size:14px">Ald./Marg./Esb./Dem.: cuántos salen en juego. Recom.: personajes marcados en la selección recomendada.</p></details>
+  </section>`;
+}
+
 function vSetup(){
   const n=S.players.length,c=COMP[n];
-  const comp=c?`<div class="comp"><span class="t-town">${c[0]} Aldeanos</span><span class="t-out">${c[1]} Marginados</span><span class="t-min">${c[2]} Esbirro${c[2]>1?'s':''}</span><span class="t-dem">${c[3]} Demonio</span></div><p class="sub">Con ${n} jugadores. Si sale el Anfitrión Siniestro, +2 Marginados y −2 Aldeanos.</p>`:`<p class="verdict">Con ${n} jugadores no hay reparto estándar. Hacen falta entre 5 y 15.</p>`;
   const plist=S.players.map((p,i)=>`<li><span class="seat">${i+1}</span><span class="nm">${esc(p.name)}</span><button class="btn sm" data-act="up" data-id="${p.id}" aria-label="Subir a ${esc(p.name)}" ${i===0?'disabled':''}>↑</button><button class="btn sm" data-act="down" data-id="${p.id}" aria-label="Bajar a ${esc(p.name)}" ${i===n-1?'disabled':''}>↓</button><button class="btn sm danger" data-act="rm" data-id="${p.id}" aria-label="Quitar a ${esc(p.name)}">✕</button></li>`).join('');
   const groups=['town','out','min','dem'].map(t=>{
     const items=ROLES.filter(r=>r.t===t);
@@ -402,9 +458,9 @@ function vSetup(){
    <ul class="plist">${plist}</ul>
    <div class="row"><input type="text" id="newname" placeholder="Nombre del jugador" maxlength="24" autocomplete="off" style="flex:1;min-width:140px"><button class="btn" data-act="add">Añadir</button></div>
    <div class="row" style="margin-top:8px"><button class="btn sm" data-act="shuf">Barajar asientos</button><button class="btn sm danger" data-act="clear">Vaciar lista</button></div>
-   ${comp}
   </section>
-  <section class="panel"><h2>La Noche de las Ánimas</h2><p class="sub">Script propio con ${ROLES.length} personajes. Desmarca los que no quieras que salgan en la partida.</p>${groups}</section>
+  ${vRec()}
+  <section class="panel"><h2>La Noche de las Ánimas</h2><p class="sub">Script propio con ${ROLES.length} personajes. Marca o desmarca a mano los que quieras que puedan salir en la partida.</p>${groups}</section>
   <button class="btn primary block" data-act="deal">${S.started?'Volver a repartir roles':'Repartir roles y empezar'}</button>
   ${S.started?'<button class="btn danger block" data-act="reset">Nueva partida (borrar roles)</button>':''}
   <p class="legal">Proyecto de aficionados con personajes originales, inspirado en la mecánica de Blood on the Clocktower. No está afiliado a The Pandemonium Institute.</p>
@@ -797,6 +853,7 @@ const A={
   seatl:(d)=>A.up(d),seatr:(d)=>A.down(d),
   rm:(d)=>{S.players=S.players.filter(p=>p.id!==+d.id);commit()},
   rm2:(d)=>{U.confirm={t:'¿Quitar a '+P(d.id).name+' de la partida?',act:()=>{S.players=S.players.filter(p=>p.id!==+d.id);U.sheet=null}};render()},
+  preset:()=>{const pr=presetFor(S.players.length);if(!pr)return;U.confirm={t:'¿Sustituir tu selección por la recomendada para '+S.players.length+' jugadores ('+pr.ids.length+' personajes)?',act:()=>{S.pool=pr.ids.slice()}};render()},
   shuf:()=>{S.players=shuffle(S.players);commit()},
   clear:()=>{U.confirm={t:'¿Vaciar la lista de jugadores?',act:()=>{S.players=[];S.started=false}};render()},
   deal:()=>{if(S.started){U.confirm={t:'Ya hay una partida en curso. ¿Repartir de nuevo y empezar otra?',act:deal};render()}else deal()},
