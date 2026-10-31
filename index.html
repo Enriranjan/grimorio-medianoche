@@ -237,6 +237,19 @@ textarea{min-height:64px;resize:vertical}
 .embers span{position:absolute;bottom:-12px;width:4px;height:4px;border-radius:50%;background:var(--ember);box-shadow:0 0 8px var(--ember);opacity:0;animation:rise linear infinite}
 @keyframes rise{0%{transform:translate(0,0);opacity:0}12%{opacity:.85}100%{transform:translate(24px,-108vh);opacity:0}}
 .secret{text-align:center;font-size:14px;color:var(--dim)}
+.help{display:flex;flex-direction:column;gap:6px}
+.helpb{align-self:flex-start;background:transparent;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-family:var(--label);font-size:14px;color:var(--dim);letter-spacing:.04em}
+.helpb span{color:var(--ember);font-family:Georgia,serif}
+.helpb[aria-expanded="true"]{border-color:var(--ember);color:var(--bone)}
+.helpc{border:1px solid var(--line);border-left:3px solid var(--ember);border-radius:10px;background:rgba(242,138,31,.05);padding:8px 14px;font-size:16px;color:var(--bone)}
+.helpc p{margin:.35em 0}.helpc ul,.helpc ol{margin:.3em 0;padding-left:20px}.helpc li{margin:3px 0}
+.panel .help{margin:6px 0}
+.ftag{display:inline-block;font-family:var(--label);font-size:12px;letter-spacing:.06em;padding:1px 8px;border-radius:999px;background:#5b4a8a;color:var(--bone);vertical-align:middle}
+.nres.fake,.hev.fake{border-color:#8f7ad1;background:rgba(124,98,200,.12)}
+.hfx{margin-top:6px;padding-top:6px;border-top:1px dashed var(--line);font-size:15px}
+.scanbox{position:relative;width:min(80vw,320px);aspect-ratio:1;border-radius:14px;overflow:hidden;background:#000;border:3px solid var(--ember)}
+.scanbox video{width:100%;height:100%;object-fit:cover;display:block}
+.scanf{position:absolute;inset:14%;border:2px dashed rgba(255,255,255,.7);border-radius:10px}
 .hev{border:1px solid var(--line);border-left:4px solid #9d8cd6;border-radius:10px;padding:9px 12px;background:var(--ink2);font-size:17px}
 .hev.pub{border-left-color:var(--ember)}
 .nrow{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--ink2)}
@@ -319,9 +332,19 @@ const YOU='grimorio-medianoche-yo';
 
 /* ============ Estado ============ */
 let S;
-const U={gqr:false,sheet:null,card:null,stage:0,from:'',to:'',voting:null,votes:[],confirm:null,focus:null,pick:null,show:null,nres:{},ninfo:{}};
+const U={gqr:false,sheet:null,card:null,stage:0,from:'',to:'',voting:null,votes:[],confirm:null,focus:null,pick:null,show:null,nres:{},ninfo:{},nfake:{}};
 const T={total:180,left:180,end:null,ac:null,done:false};
 
+const HELP={};
+function hbox(k,t,html){return `<div class="help"><button class="helpb" data-act="help" data-k="${k}" aria-expanded="${!!HELP[k]}"><span aria-hidden="true">ⓘ</span> ${t}</button><div class="helpc" ${HELP[k]?'':'hidden'}>${html}</div></div>`}
+const phelp=hbox;
+const HTAB={
+ setup:['Cómo preparar la partida',`<ol><li><b>Jugadores:</b> añádelos en el orden en que se sientan, en círculo.</li><li><b>Personajes recomendados:</b> te dice cuántos de cada bando salen con tu número de jugadores y cuántos conviene marcar. Si dudas, aplica la selección recomendada.</li><li><b>La Noche de las Ánimas:</b> marca o desmarca a mano qué personajes pueden salir.</li><li><b>Ajustes de partida:</b> decide qué ven los jugadores en su móvil.</li><li><b>Repartir:</b> se asignan los roles al azar y aparece el QR de la partida para que cada uno vea su carta.</li></ol>`],
+ grim:['Cómo usar el grimorio',`<p>Es tu tablero secreto: la mesa vista desde arriba, con el personaje de cada jugador.</p><ul><li>Toca una ficha para cambiar su personaje, marcarlo muerto, poner recordatorios (Envenenado, Protegido…) o escribir notas.</li><li>El color del borde es su bando. El punto blanco es su voto fantasma. 🎭 indica que cree ser otro personaje (el Borracho).</li><li><b>Ocultar</b>, arriba, tapa los personajes si alguien puede ver tu pantalla.</li><li>El <b>Diario del Narrador</b>, abajo, recoge todo lo que has mostrado a cada jugador.</li></ul>`],
+ night:['Cómo llevar la noche',`<p>Los pasos salen en el orden en que se despierta cada personaje en juego. Ve de arriba abajo.</p><ul><li>Los botones de cada paso son atajos: eligen jugadores, ponen y quitan fichas, calculan la respuesta y enseñan cartas en grande.</li><li>Al usar un atajo o pulsar <b>Marcar</b>, el paso queda hecho y lo que le has mostrado se apunta en su diario.</li><li>⚠ avisa si quien despierta es el Borracho o está envenenado: puedes darle información falsa. Elige lo que le dices en <b>Le has dicho</b> o pulsa <b>🎭 Dar información falsa</b>; quedará marcada como falsa solo para ti.</li><li>Al final, <b>Aplicar muertes</b> mata a quien tenga «Muere esta noche».</li></ul>`],
+ day:['Cómo llevar el día',`<ul><li><b>Cuenta atrás:</b> para el debate. La duración por defecto se cambia en Ajustes de partida.</li><li><b>Nominar:</b> elige quién nomina y a quién, y abre la votación. Ve marcando quién levanta la mano, en sentido horario.</li><li>Si alcanza la mitad de los vivos, va a la hoguera. Si otro le supera después, le sustituye; si empatan, no queda nadie.</li><li>Antes de anochecer, <b>Ejecutar</b> a quien esté en la hoguera.</li></ul>`],
+ cards:['Para qué sirve esta pestaña',`<ul><li><b>QR de la partida:</b> un solo QR para toda la mesa. Cada jugador lo escanea, elige su nombre y ve su carta. Vuelve a enseñarlo cuando haya novedades en los diarios o si cambias algún rol.</li><li><b>Libro de personajes:</b> la lista de personajes que pueden salir, con un resumen de reglas.</li><li><b>Dirección de la web:</b> la dirección pública que abren los móviles. Normalmente no hace falta tocarla.</li></ul>`]
+};
 const defCfg=()=>({hist:false,pub:true,notes:true,off:true,tmin:3});
 function fresh(){return{v:1,players:NAMES.map((n,i)=>({id:i+1,name:n,role:null,shown:null,alive:true,ghost:true,rem:[],note:'',seen:false})),nextId:NAMES.length+1,pool:ROLES.map(r=>r.id),started:false,day:1,night:true,done:{},noms:[],nomd:[],nomr:[],block:null,bluffs:[],hide:false,tab:'setup',log:[],cfg:defCfg()}}
 function load(){try{const j=localStorage.getItem(KEY);if(j){const s=JSON.parse(j);if(s&&s.v===1)return s}}catch(e){}return null}
@@ -361,16 +384,16 @@ function deal(){
   S.players.forEach(p=>{if(p.role==='borracho'){const r=spare.shift()||shuffle(ROLES.filter(x=>x.t==='town'))[0];p.shown=r.id;used.add(r.id)}});
   S.bluffs=shuffle(ROLES.filter(r=>(r.t==='town'||r.t==='out')&&!used.has(r.id))).slice(0,3).map(r=>r.id);
   Object.assign(S,{started:true,gid:newGid(),exec:null,log:[],day:1,night:true,done:{},noms:[],nomd:[],nomr:[],block:null,tab:'grim'});
-  U.sheet=null;U.voting=null;U.votes=[];U.gqr=true;U.nres={};U.ninfo={};
+  U.sheet=null;U.voting=null;U.votes=[];U.gqr=true;U.nres={};U.ninfo={};U.nfake={};S.reveal=false;
   commit();toast('Roles repartidos. Enseña el QR de la partida');
 }
 function resetGame(){
-  S.started=false;S.gid=null;S.exec=null;S.log=[];S.day=1;S.night=true;S.done={};S.noms=[];S.nomd=[];S.nomr=[];S.block=null;S.bluffs=[];S.tab='setup';
+  S.started=false;S.gid=null;S.exec=null;S.log=[];S.reveal=false;S.day=1;S.night=true;S.done={};S.noms=[];S.nomd=[];S.nomr=[];S.block=null;S.bluffs=[];S.tab='setup';
   S.players.forEach(p=>{p.role=null;p.shown=null;p.alive=true;p.ghost=true;p.rem=[];p.note='';p.seen=false});
   U.sheet=null;U.voting=null;U.votes=[];U.gqr=false;commit();
 }
 function phase(){
-  U.nres={};U.ninfo={};
+  U.nres={};U.ninfo={};U.nfake={};
   if(S.night){S.night=false;S.done={};S.noms=[];S.nomd=[];S.nomr=[];S.block=null;U.voting=null;U.votes=[];S.tab='day'}
   else{S.night=true;S.day++;S.done={};S.tab='night'}
   commit();
@@ -441,6 +464,7 @@ function vRec(){
   const same=pr.ids.length===S.pool.length&&pr.ids.every(id=>S.pool.includes(id));
   const table=Object.keys(COMP).map(Number).map(k=>{const [a,b,m,d]=COMP[k],p=presetFor(k);return `<tr${k===n?' class="cur"':''}><td>${k}</td><td class="t-town">${a}</td><td class="t-out">${b}</td><td class="t-min">${m}</td><td class="t-dem">${d}</td><td>${p.ids.length}</td></tr>`}).join('');
   return `<section class="panel"><h2>Personajes recomendados</h2>
+   ${hbox('rec','Por qué marcar más de los que salen',`<p>Si marcas justo los personajes que salen, todos sabrán qué hay en juego y el Demonio no tendrá faroles creíbles. Por eso se recomienda marcar algunos más:</p><ul><li><b>Aldeanos:</b> los que salen + 3, porque el Demonio recibe 3 personajes buenos que no están en juego para mentir.</li><li><b>Marginados y Esbirros:</b> uno más de los que salen, para que no se sepa cuál ha tocado.</li><li><b>Demonios:</b> dos a partir de 7 jugadores.</li></ul>`)}
    <p class="sub">Con <b>${n} jugadores</b> entran en juego:</p>
    <div class="comp"><span class="t-town">${c[0]} Aldeanos</span><span class="t-out">${c[1]} Marginados</span><span class="t-min">${c[2]} Esbirro${c[2]>1?'s':''}</span><span class="t-dem">${c[3]} Demonio</span></div>
    <p class="sub" style="margin-top:8px">Conviene marcar más personajes de los que salen: así nadie puede deducir qué hay en juego y el Demonio tiene 3 faroles (personajes buenos que no están). Si sale el Anfitrión Siniestro, +2 Marginados y −2 Aldeanos.</p>
@@ -457,6 +481,7 @@ function vRec(){
 function vCfg(){
   const c=S.cfg,tg=(k,t,d,dis)=>`<label class="pick"><input type="checkbox" data-chg="cfg" data-k="${k}" ${c[k]?'checked':''} ${dis?'disabled':''}><span class="tx"><b style="color:var(--bone)">${t}</b><small>${d}</small></span></label>`;
   return `<section class="panel"><h2>Ajustes de partida</h2><p class="sub">Afectan a lo que ven los jugadores al escanear el QR de la partida. Si los cambias con la partida empezada, vuelve a enseñar el QR.</p>
+   ${hbox('cfg','Qué hace cada ajuste',`<ul><li><b>Historial:</b> cada jugador tiene un diario con lo que le has mostrado de noche. Le llega cuando escanea el QR de la partida desde su diario. Al terminar puedes revelar qué información era falsa.</li><li><b>Muertes y ejecuciones:</b> añade al diario de todos los sucesos públicos.</li><li><b>Notas personales:</b> bloc de notas y sospechas en el móvil de cada jugador. No las ve nadie más, ni tú.</li><li><b>Personajes que no entran:</b> en el libro, enseña también los que has dejado fuera, atenuados.</li></ul>`)}
    ${tg('hist','Mostrar a los jugadores su historial de partida','Cada jugador ve en su móvil lo que le has mostrado de noche (a quién envenenó, qué respuesta le diste, sus Esbirros y faroles…). Se añade cuando marcas el paso en la pestaña Noche y lo reciben al volver a escanear el QR.')}
    ${tg('pub','Incluir en el historial muertes y ejecuciones','Sucesos públicos que ve toda la mesa: quién murió cada noche y a quién se ejecutó.',!c.hist)}
    ${tg('notes','Notas personales para los jugadores','Bloc de notas y sospechas por jugador en el móvil de cada uno. Son privadas y se borran en cada partida.')}
@@ -473,7 +498,7 @@ function vSetup(){
     const on=items.filter(r=>S.pool.includes(r.id)).length;
     return `<details class="t-${t}" ${t==='min'||t==='dem'?'open':''}><summary class="lbl" style="cursor:pointer;padding:6px 0;color:var(--tc)">${TEAMS[t].p} · ${on}/${items.length}</summary>${items.map(r=>`<label class="pick t-${t}"><input type="checkbox" data-chg="pool" data-id="${r.id}" ${S.pool.includes(r.id)?'checked':''}><span class="ic">${r.i}</span><span class="tx"><b>${esc(r.n)}</b><small>${esc(r.a)}</small></span></label>`).join('')}</details>`;
   }).join('');
-  const live=S.started?`<section class="panel" style="border-color:var(--ember)"><h2>Partida en curso</h2><p class="sub">Enseña el QR de la partida a la mesa: cada jugador lo escanea, elige su nombre y ve su carta.</p><button class="btn primary block" style="margin-top:8px" data-act="gameqr">▣ Mostrar QR de la partida</button></section>`:'';
+  const live=S.started?`<section class="panel" style="border-color:var(--ember)"><h2>Partida en curso</h2><p class="sub">Enseña el QR de la partida a la mesa: cada jugador lo escanea, elige su nombre y ve su carta.</p><button class="btn primary block" style="margin-top:8px" data-act="gameqr">▣ Mostrar QR de la partida</button>${S.cfg.hist?`<button class="btn block" style="margin-top:8px" data-act="reveal2" aria-pressed="${!!S.reveal}">${S.reveal?'🏁 Información falsa revelada · ocultar':'🏁 Fin de partida: revelar la información falsa'}</button><p class="sub" style="font-size:14px;margin-top:4px">${S.reveal?'Al volver a escanear, cada diario marca qué era falso, por qué y cuál era la verdad.':'Úsalo al terminar: los diarios mostrarán qué información era falsa y por qué.'}</p>`:''}</section>`:'';
   return `<div class="wrap">
   ${live}
   <section class="panel"><h2>Jugadores</h2><p class="sub">El orden es el de los asientos, en círculo. Los nombres son de ejemplo: cámbialos por los de tu mesa.</p>
@@ -495,6 +520,21 @@ function ringSVG(){
   for(let i=0;i<48;i++){const a=i*Math.PI/24,r1=i%4===0?45.6:47,r2=48.6;t+=`<line x1="${(50+r1*Math.cos(a)).toFixed(2)}" y1="${(50+r1*Math.sin(a)).toFixed(2)}" x2="${(50+r2*Math.cos(a)).toFixed(2)}" y2="${(50+r2*Math.sin(a)).toFixed(2)}"/>`}
   return `<svg class="runes" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="48.6"/><circle cx="50" cy="50" r="27"/><circle cx="50" cy="50" r="25.6" stroke-dasharray="2.5 1.4"/>${t}</svg>`;
 }
+function narrLog(){
+  if(!S.started||!(S.log||[]).length)return '';
+  const ix=id=>S.players.findIndex(p=>p.id===id),cv=v=>Array.isArray(v)?v.map(cv):v&&v.p!=null?ix(v.p):v&&v.r!=null?ROLES.findIndex(r=>r.id===v.r):v;
+  const sv=[PV.G,PV.i];PV.G={ps:S.players.map(p=>[p.name])};PV.i=-1;
+  let last=-1,h='';
+  S.log.slice().sort((a,b)=>(a.n*2+(a.d?1:0))-(b.n*2+(b.d?1:0))).forEach(e=>{
+    const key=e.n*2+(e.d?1:0),hd=e.to==='all'?[0,0,-1]:[0,0,[]];
+    if(key!==last){last=key;h+=`<div class="lbl" style="margin-top:8px">${phaseName(key).toUpperCase()}</div>`}
+    const who=e.to==='all'?'Toda la mesa':names(e.to.map(P).filter(Boolean)),f=isFalse(e);
+    h+=`<div class="hev ${e.to==='all'?'pub':''} ${f?'fake':''}"><span class="sub">${who} ${e.w==='b'?'(Borracho)':e.w==='e'?'(envenenado)':''}</span><br>${histText([key,e.k,hd[2],...e.a.map(cv)])}${f?`<div class="hfx"><span class="ftag">🎭 Falsa</span> <span class="sub">Verdad: ${histText([key,e.k,hd[2],...e.t.map(cv)])}</span></div>`:''}</div>`;
+  });
+  [PV.G,PV.i]=sv;
+  const nf=S.log.filter(isFalse).length;
+  return `<details class="rules"><summary>📜 Diario del Narrador · ${S.log.length} sucesos${nf?' · '+nf+' falsos':''}</summary><p class="sub" style="font-size:14px">Todo lo que has mostrado, a quién y si era falso. Los jugadores solo ven lo suyo, en segunda persona.</p><div class="lst" style="gap:6px">${h}</div></details>`;
+}
 function vGrim(){
   const n=S.players.length;if(!n)return `<div class="panel empty">No hay jugadores. Añádelos en Preparar.</div>`;
   const sz=Math.min(19,215/Math.max(n,5)),R0=37;
@@ -512,6 +552,7 @@ function vGrim(){
    <div class="legend"><span class="t-town"><i></i>Aldeano</span><span class="t-out"><i></i>Marginado</span><span class="t-min"><i></i>Esbirro</span><span class="t-dem"><i></i>Demonio</span><span>● voto fantasma</span><span>🎭 cree ser otro</span></div>
    ${S.started?`<button class="btn primary block" data-act="phase">${S.night?'☀ Amanece':'☾ Anochece'}</button>`:needStart()}
    <p class="sub" style="text-align:center">Toca una ficha para cambiar su rol, marcarla muerta o poner recordatorios.</p>
+   ${narrLog()}
   </div>`;
 }
 
@@ -524,8 +565,22 @@ const safe=p=>p.rem.includes('Protegido')||(p.role==='soldado'&&!p.rem.includes(
 function tokenCard(rid,mini){const r=R[rid];if(!r)return '';return `<div class="card ${mini?'mini':''}" style="--tc:var(--${r.t})"><div class="ct">${TEAMS[r.t].n.toUpperCase()}</div><div class="ci">${r.i}</div><h2>${esc(r.n)}</h2><p class="ab">${esc(r.a)}</p></div>`}
 /* Historial: cada suceso guarda quién lo puede ver (ids de jugador o 'all'). Refs: {p:id} jugador, {r:id} personaje. */
 const pr=id=>({p:id}),rr=id=>({r:id});
+function relog(st){if(logGet(st)){S.log=S.log.filter(e=>!(e.n===S.day&&!e.d&&e.s===st));autoLog(st)}}
 const hid=st=>holdersOf(st).filter(p=>p.alive||st==='murcielago').map(p=>p.id);
-function logSet(st,k,to,a){S.log=(S.log||[]).filter(e=>!(e.n===S.day&&!e.d&&e.s===st));if(to==='all'||to.length)S.log.push({n:S.day,s:st,k,to,a})}
+function logSet(st,k,to,a,t){
+  S.log=(S.log||[]).filter(e=>!(e.n===S.day&&!e.d&&e.s===st));
+  if(to!=='all'&&!to.length)return;
+  const ps=to==='all'?[]:to.map(P).filter(Boolean),w=ps.some(p=>p.shown===st&&p.role!==st)?'b':ps.some(p=>p.rem.includes('Envenenado'))?'e':'';
+  S.log.push({n:S.day,s:st,k,to,a,t:JSON.parse(JSON.stringify(t||a)),w});
+}
+const isFalse=e=>!!e.t&&JSON.stringify(e.a)!==JSON.stringify(e.t);
+/* Información falsa para Bibliotecaria, Cronista y Detective: un personaje del tipo y 2 jugadores que no lo tienen */
+function genFake(id){
+  const t={bibliotecaria:'out',cronista:'town',detective:'min'}[id],hs=holdersOf(id).map(p=>p.id);
+  const r=shuffle(ROLES.filter(x=>x.t===t))[0],c=shuffle(S.players.filter(p=>!hs.includes(p.id)&&p.role!==r.id&&p.shown!==r.id)).slice(0,2);
+  return {r:r.id,ids:c.map(p=>p.id),fake:true};
+}
+const infoArr=inf=>inf.none?[]:[rr(inf.r),...inf.ids.map(pr)];
 const logGet=st=>(S.log||[]).find(e=>e.n===S.day&&!e.d&&e.s===st);
 function faroInfo(p){const al=S.players.filter(q=>q.alive||q.id===p.id),i=al.indexOf(p);if(al.length<3)return null;const nb=[al[(i-1+al.length)%al.length],al[(i+1)%al.length]];return{nb,n:nb.filter(isEvil).length}}
 function autoLog(st){
@@ -537,7 +592,7 @@ function autoLog(st){
     case 'espia':logSet(st,'e',hid(st),[]);break;
     case 'farolero':{const h=holdersOf(st).find(p=>p.alive),f=h&&faroInfo(h);if(f)logSet(st,'f',[h.id],[f.n]);break}
     case 'sepulturero':{const e=S.exec&&S.exec.day===S.day-1?P(S.exec.id):null;if(e)logSet(st,'s',hid(st),[pr(e.id),rr(e.role)]);break}
-    case 'bibliotecaria':case 'cronista':case 'detective':{const inf=U.ninfo[st];if(inf)logSet(st,'i',hid(st),inf.none?[]:[rr(inf.r),...inf.ids.map(pr)]);break}
+    case 'bibliotecaria':case 'cronista':case 'detective':{const inf=U.ninfo[st],fk=U.nfake[st];if(inf)logSet(st,'i',hid(st),infoArr(fk||inf),infoArr(inf));break}
   }
 }
 const PICKS={
@@ -598,15 +653,17 @@ function nightTools(s){
         const odd=nb.filter(q=>q.role==='espia'||q.role==='eremita');
         return `🏮 Vecinos de ${esc(p.name)}: ${names(nb)} → <span class="big2">${n}</span> ${n===1?'dedo':'dedos'}.${odd.length?` <span class="nwarn">${names(odd)} puede registrarse distinto (Espía/Eremita): decides tú.</span>`:''}`});
       const lg=logGet('farolero');
-      b=`<div class="nres">${out.join('<br>')}</div>`+(S.cfg.hist&&out.length?`<div class="row"><span class="sub">Le enseñé:</span>${[0,1,2].map(v=>`<button class="chipb" data-act="nfaro" data-v="${v}" aria-pressed="${!!lg&&lg.a[0]===v}">${v}</button>`).join('')}</div>`:'');break}
+      b=`<div class="nres">${out.join('<br>')}</div>`+(out.length?`<div class="row"><span class="sub">Le has enseñado:</span>${[0,1,2].map(v=>`<button class="chipb" data-act="nfaro" data-v="${v}" aria-pressed="${!!lg&&lg.a[0]===v}">${v}</button>`).join('')}${lg&&isFalse(lg)?'<span class="ftag">🎭 Información falsa</span>':''}</div>`:'');break}
     case 'sepulturero':{
       const e=S.exec&&S.exec.day===S.day-1?P(S.exec.id):null;
       b=e?`<span>Hoy fue ejecutado <b>${esc(e.name)}</b>.</span>`+sb('exec','⚰️ Enseñar su ficha'):'<span class="sub">Hoy no hubo ejecución registrada: no lo despiertes.</span>';break}
     case 'bibliotecaria':case 'cronista':case 'detective':{
       const inf=U.ninfo[s.id];
-      if(!inf)b=`<button class="btn sm" data-act="ninfo" data-id="${s.id}">✨ Generar información</button>`;
-      else if(inf.none)b=`<div class="nres">No hay ${s.id==='bibliotecaria'?'Marginados':'personajes de ese tipo'} en juego: haz el gesto de cero.</div><button class="btn sm" data-act="ninfo" data-id="${s.id}">↻ Repetir</button>`;
-      else b=`<div class="nres">Ficha ${R[inf.r].i} <b>${esc(R[inf.r].n)}</b> · señala a ${names(inf.ids.map(P))}.</div><div class="row">${sb('info','🃏 Enseñar ficha',`data-id="${s.id}"`)}<button class="btn sm" data-act="ninfo" data-id="${s.id}">↻ Otra opción</button></div>`;
+      if(!inf)b=`<button class="btn sm" data-act="ninfo" data-id="${s.id}">✨ Generar información</button><button class="btn sm" data-act="nfake" data-id="${s.id}">🎭 Dar información falsa</button>`;
+      else if(inf.none&&!U.nfake[s.id])b=`<div class="nres">No hay ${s.id==='bibliotecaria'?'Marginados':'personajes de ese tipo'} en juego: haz el gesto de cero.</div><button class="btn sm" data-act="ninfo" data-id="${s.id}">↻ Repetir</button><button class="btn sm" data-act="nfake" data-id="${s.id}">🎭 Dar información falsa</button>`;
+      else if(inf.none){const fk=U.nfake[s.id];b=`<div class="nres fake"><span class="ftag">🎭 Información falsa</span> Ficha ${R[fk.r].i} <b>${esc(R[fk.r].n)}</b> · señala a ${names(fk.ids.map(P))}.<br><span class="sub">La verdad: no hay ninguno en juego.</span></div><div class="row">${sb('info','🃏 Enseñar ficha',`data-id="${s.id}"`)}<button class="btn sm" data-act="nfake" data-id="${s.id}">↻ Otra falsa</button><button class="btn sm" data-act="ntrue" data-id="${s.id}">✓ Dar la verdadera</button></div>`}
+      else{const fk=U.nfake[s.id],sh=fk||inf;
+        b=`<div class="nres ${fk?'fake':''}">${fk?'<span class="ftag">🎭 Información falsa</span> ':''}Ficha ${R[sh.r].i} <b>${esc(R[sh.r].n)}</b> · señala a ${names(sh.ids.map(P))}.${fk?`<br><span class="sub">La verdadera era: ${R[inf.r].i} ${esc(R[inf.r].n)} · ${names(inf.ids.map(P))}.</span>`:''}</div><div class="row">${sb('info','🃏 Enseñar ficha',`data-id="${s.id}"`)}${fk?`<button class="btn sm" data-act="nfake" data-id="${s.id}">↻ Otra falsa</button><button class="btn sm" data-act="ntrue" data-id="${s.id}">✓ Dar la verdadera</button>`:`<button class="btn sm" data-act="ninfo" data-id="${s.id}">↻ Otra opción</button><button class="btn sm" data-act="nfake" data-id="${s.id}">🎭 Dar información falsa</button>`}</div>`}
       break}
     case 'espia':b=`<button class="btn sm" data-act="tab" data-k="grim">❂ Abrir grimorio para enseñárselo</button>`;break;
     case 'minfo':b=sb('demon','🩸 Enseñar quién es el Demonio');break;
@@ -617,7 +674,8 @@ function nightTools(s){
   }
   let res=U.nres[s.id];
   const lg=logGet(s.id);
-  if(S.cfg.hist&&lg&&(lg.k==='v'||lg.k==='c'))res=(res||'')+`<div class="row" style="margin-top:6px"><span class="sub">En su historial le consta:</span>${[1,0].map(v=>`<button class="chipb" data-act="nans" data-s="${s.id}" data-v="${v}" aria-pressed="${lg.a[2]===v}">${v?'SÍ':'NO'}</button>`).join('')}</div>`;
+  if(lg&&(lg.k==='v'||lg.k==='c'))res=(res||'')+`<div class="row" style="margin-top:6px"><span class="sub">Le has dicho:</span>${[1,0].map(v=>`<button class="chipb" data-act="nans" data-s="${s.id}" data-v="${v}" aria-pressed="${lg.a[2]===v}">${v?'SÍ':'NO'}</button>`).join('')}${isFalse(lg)?'<span class="ftag">🎭 Información falsa</span>':''}</div>`;
+  if(lg&&(lg.k==='s'||lg.k==='b'))res=(res||'')+`<div class="row" style="margin-top:6px"><label class="sub" for="nr-${s.id}">Ficha que le enseñaste:</label><select id="nr-${s.id}" class="nsel" data-chg="nrole" data-s="${s.id}">${ROLES.map(r=>`<option value="${r.id}" ${lg.a[1].r===r.id?'selected':''}>${r.i} ${esc(r.n)}</option>`).join('')}</select>${isFalse(lg)?'<span class="ftag">🎭 Información falsa</span>':''}</div>`;
   if(s.id==='dawn'&&S.cfg.hist&&S.done.dawn)b+=`<button class="btn sm" data-act="gameqr">▣ Enseñar QR: historial actualizado</button>`;
   if(!b&&!warn&&!res)return '';
   return `<div class="ntools">${warn}${b?`<div class="row">${b}</div>`:''}${res?`<div class="nres">${res}</div>`:''}</div>`;
@@ -703,11 +761,14 @@ const cfgFlags=()=>(S.cfg.hist?1:0)|(S.cfg.pub?2:0)|(S.cfg.notes?4:0)|(S.cfg.off
 function encLog(){
   if(!S.cfg.hist)return [];
   const ix=id=>S.players.findIndex(p=>p.id===id),cv=v=>Array.isArray(v)?v.map(cv):v&&v.p!=null?ix(v.p):v&&v.r!=null?ROLES.findIndex(r=>r.id===v.r):v;
-  return (S.log||[]).filter(e=>(e.to!=='all'||S.cfg.pub)&&(e.d||!(S.night&&e.n===S.day&&!S.done[e.s])))
-    .map(e=>[e.n*2+(e.d?1:0),e.k,e.to==='all'?-1:e.to.map(ix).filter(i=>i>=0),...e.a.map(cv)]);
+  const L=(S.log||[]).filter(e=>(e.to!=='all'||S.cfg.pub)&&(e.d||!(S.night&&e.n===S.day&&!S.done[e.s])));
+  const out=L.map(e=>[e.n*2+(e.d?1:0),e.k,e.to==='all'?-1:e.to.map(ix).filter(i=>i>=0),...e.a.map(cv)]);
+  /* Solo al revelar: índice de cada suceso falso, motivo y la verdad */
+  out.fx=S.reveal?L.map((e,i)=>isFalse(e)?[i,e.w||'',e.t.map(cv)]:null).filter(Boolean):[];
+  return out;
 }
-const encGame=()=>b64e(JSON.stringify([2,S.gid||'',poolMask().toString(36),S.bluffs.map(b=>ROLES.findIndex(r=>r.id===b)),S.players.map(p=>[p.name,ROLES.findIndex(r=>r.id===(p.shown||p.role))]),cfgFlags(),encLog(),S.day*2+(S.night?0:1)]));
-function decGame(t){const a=JSON.parse(b64d(t));if(a[0]!==2)throw new Error('v');return{g:a[1],mask:parseInt(a[2],36),b:a[3]||[],ps:a[4]||[],f:a[5]!=null?a[5]:12,log:a[6]||[],now:a[7]||0}}
+const encGame=()=>(()=>{const LG=encLog();return b64e(JSON.stringify([2,S.gid||'',poolMask().toString(36),S.bluffs.map(b=>ROLES.findIndex(r=>r.id===b)),S.players.map(p=>[p.name,ROLES.findIndex(r=>r.id===(p.shown||p.role))]),cfgFlags(),LG,S.day*2+(S.night?0:1),LG.fx]))})();
+function decGame(t){const a=JSON.parse(b64d(t));if(a[0]!==2)throw new Error('v');return{g:a[1],mask:parseInt(a[2],36),b:a[3]||[],ps:a[4]||[],f:a[5]!=null?a[5]:12,log:a[6]||[],now:a[7]||0,fx:a[8]||[]}}
 function gameCard(G,i){
   const p=G.ps[i],r=ROLES[p[1]],d={r:p[1],n:p[0],m:[],d:[],b:[]};
   const by=t=>G.ps.filter((q,j)=>j!==i&&ROLES[q[1]]&&ROLES[q[1]].t===t).map(q=>q[0]);
@@ -780,6 +841,7 @@ function renderList(){
    <div class="pvtop"><div class="lbl">La Noche de las Ánimas</div></div><h1>Libro de personajes</h1>
    <p class="sub" style="text-align:center;margin:0">${mask==null?'Todos los personajes del script.':hideOff?'Los personajes que pueden salir en esta partida.':'Marcados con ✓ los personajes que el Narrador ha metido en el bote de esta partida. Que puedan salir no significa que estén en juego.'}</p>
    ${back?`<button class="btn primary block" data-act="pback">${back}</button>`:''}
+   ${phelp('list','Cómo leer el libro',`<p>Todos los personajes de «La Noche de las Ánimas», agrupados por bando. ${mask==null?'':'Los marcados con ✓ pueden salir en esta partida; eso no quiere decir que estén en juego.'} Tu personaje aparece resaltado.</p><p>Usa los filtros para ver un solo bando y abre el resumen de reglas si tienes dudas.</p>`)}
    <details class="rules"><summary>Resumen de reglas</summary><ul>${RULES.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></details>
    <div class="fil" role="group" aria-label="Filtrar por bando">${fil}</div>
    ${groups||'<p class="sub">No hay personajes en esta categoría.</p>'}
@@ -790,8 +852,8 @@ function renderList(){
 
 /* ---- Vista del jugador (se abre al escanear el QR) ---- */
 const PV={G:null,d:null,i:-1,mine:[],conf:null,view:'pick',mask:null,f:'all',first:false};
-const NOTES='grimorio-medianoche-notas';
-const FX=['☠️ Envenenado','🍾 Borracho','🛡️ Protegido','🐈‍⬛ Embrujado','🐴 Maldito','† Muerto','👍 Me fío','👎 Sospechoso','🤥 Miente'];
+const NOTES='grimorio-medianoche-notas',DRUNK=ROLES.findIndex(r=>r.id==='borracho');
+const FX=['☠️ Envenenado','🛡️ Protegido','🐈‍⬛ Embrujado','🐴 Maldito','† Muerto','👍 Me fío','👎 Sospechoso','🤥 Miente'];
 const phaseName=k=>(k%2?'Día ':'Noche ')+(k>>1);
 function histText(e){
   const G=PV.G,nm=j=>`<b>${esc(G.ps[j]?G.ps[j][0]:'?')}</b>`,rn=j=>ROLES[j]?ROLES[j].i+' <b>'+esc(ROLES[j].n)+'</b>':'?',ls=a=>a&&a.length?a.map(nm).join(', '):'nadie',a=e.slice(3);
@@ -821,12 +883,58 @@ function pvShell(inner){
 }
 function renderHist(){
   const ev=PV.mine.slice().sort((x,y)=>x[0]-y[0]);let last=-1,h='';
-  ev.forEach(e=>{if(e[0]!==last){last=e[0];h+=`<h2 class="th" style="--tc:${e[0]%2?'var(--ember)':'#9d8cd6'}">${e[0]%2?'☀':'☾'} ${phaseName(e[0])}</h2>`}h+=`<div class="hev ${e[2]===-1?'pub':''}">${histText(e)}</div>`});
-  pvShell(`<h1>Historial de la partida</h1>
+  ev.forEach(e=>{if(e[0]!==last){last=e[0];h+=`<h2 class="th" style="--tc:${e[0]%2?'var(--ember)':'#9d8cd6'}">${e[0]%2?'☀':'☾'} ${phaseName(e[0])}</h2>`}h+=`<div class="hev ${e[2]===-1?'pub':''} ${e.fx?'fake':''}">${histText(e)}${e.fx?`<div class="hfx"><span class="ftag">🎭 Era falsa</span> ${{b:'Eras el Borracho: tu habilidad no funcionaba.',e:'Estabas envenenado esa noche.'}[e.fx[1]]||'El Narrador te dio información falsa.'}<br><span class="sub">La verdad: ${histText([e[0],e[1],e[2],...e.fx[2]])}</span></div>`:''}</div>`});
+  pvShell(`<h1>Diario de la partida</h1>
    <p class="sub" style="text-align:center;margin:0">Lo que el Narrador te ha mostrado${PV.G.f&2?' y lo que ha pasado en la mesa':''}. Actualizado hasta: <b>${phaseName(PV.G.now)}</b>.</p>
-   <button class="btn primary block" data-act="pback">← Volver a mi carta</button>
-   ${h||'<p class="empty">Todavía no hay nada en tu historial.</p>'}
-   <p class="secret">Para ver lo último, vuelve a escanear el QR de la partida cuando el Narrador lo enseñe.</p>`);
+   ${phelp('hist','Cómo funciona el diario',`<p>Aquí se apunta lo que el Narrador te ha mostrado: a quién elegiste, qué respuesta te dio, qué fichas te enseñó…${PV.G.f&2?' También las muertes y ejecuciones de la partida.':''}</p><p>Tu móvil no recibe nada solo. Cuando el Narrador enseñe el QR de la partida (normalmente al amanecer), pulsa <b>✒️ Escribir en el diario</b> y apunta la cámara al QR: se añadirá lo último.</p><p>Lo que pone aquí es lo que se te dijo. Puede que no sea verdad si estabas envenenado o eras el Borracho: no lo sabrás hasta el final.</p>`)}
+   <button class="btn primary block" data-act="pscan">✒️ Escribir en el diario</button>
+   ${h||'<p class="empty">Todavía no hay nada en tu diario.</p>'}
+   <button class="btn block" data-act="pback">← Volver a mi carta</button>`);
+}
+/* Escribir en el diario: lee con la cámara el QR de la partida y actualiza sin salir de la página */
+const SC={st:null,raf:0};
+function loadJsQR(){return window.jsQR?Promise.resolve():new Promise((ok,ko)=>{const sc=document.createElement('script');sc.src='jsQR.js';sc.onload=ok;sc.onerror=ko;document.head.appendChild(sc)})}
+function scanUI(msg){
+  let o=$('#scanov');
+  if(!o){o=document.createElement('div');o.id='scanov';o.className='overlay center';o.setAttribute('role','dialog');o.setAttribute('aria-modal','true');document.body.appendChild(o)}
+  o.innerHTML=`<div class="bd" data-act="pscanx"></div><div class="qrbox"><div class="lbl">Diario de la partida</div><h2>Escribir en el diario</h2><div class="scanbox"><video id="scanv" playsinline muted></video><span class="scanf" aria-hidden="true"></span></div><p class="sub" id="scanmsg">${msg}</p><button class="btn" data-act="pscanx">Cancelar</button></div>`;
+}
+function stopScan(){cancelAnimationFrame(SC.raf);if(SC.st){SC.st.getTracks().forEach(t=>t.stop());SC.st=null}const o=$('#scanov');if(o)o.remove()}
+async function startScan(){
+  scanUI('Apunta la cámara al QR de la partida que enseña el Narrador.');
+  try{
+    await loadJsQR();
+    SC.st=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+  }catch(e){const m=$('#scanmsg');if(m)m.textContent='No se pudo abrir la cámara. Da permiso a la cámara o escanea el QR con la app de cámara del móvil.';return}
+  const v=$('#scanv');if(!v){stopScan();return}
+  v.srcObject=SC.st;await v.play().catch(()=>{});
+  const cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});
+  const tick=()=>{
+    if(!SC.st)return;
+    if(v.readyState>=2&&v.videoWidth){
+      const k=Math.min(1,640/v.videoWidth);cv.width=v.videoWidth*k;cv.height=v.videoHeight*k;
+      cx.drawImage(v,0,0,cv.width,cv.height);
+      const r=jsQR(cx.getImageData(0,0,cv.width,cv.height).data,cv.width,cv.height,{inversionAttempts:'dontInvert'});
+      if(r&&r.data&&gotScan(r.data))return;
+    }
+    SC.raf=requestAnimationFrame(tick);
+  };
+  tick();
+}
+function gotScan(txt){
+  const m=/#p=([\w-]+)/.exec(txt);
+  if(!m){const e=$('#scanmsg');if(e)e.textContent='Ese QR no es el de la partida. Prueba otra vez.';return false}
+  let G;try{G=decGame(m[1])}catch(e){return false}
+  if(G.g!==PV.G.g){stopScan();if(confirm('Este QR es de otra partida. ¿Abrirla?'))location.href=txt;return true}
+  const before=PV.mine.length;
+  PV.G=G;PV.mask=G.mask;
+  const i=G.ps[PV.i]&&G.ps[PV.i][0]===PV.d.n?PV.i:G.ps.findIndex(q=>q[0]===PV.d.n);
+  stopScan();
+  try{history.replaceState(null,'',location.href.split('#')[0]+'#p='+m[1])}catch(e){}
+  if(i<0){PV.d=null;PV.view='pick';renderPlayer();return true}
+  const view=PV.view;pickSeat(i);PV.view=view;renderPlayer();
+  const n=PV.mine.length-before;toast(n>0?'Diario actualizado: '+n+' novedad'+(n>1?'es':''):'Diario al día: no hay novedades');
+  return true;
 }
 function notesLoad(){
   let n=null;try{n=JSON.parse(localStorage.getItem(NOTES)||'null')}catch(e){}
@@ -842,13 +950,15 @@ function renderNotes(){
     if(j===PV.i)return '';
     const e=n.s[j]||{r:[],fx:[]};
     return `<div class="nrow"><div class="nrh"><b>${esc(q[0])}</b><span class="sub">Asiento ${j+1}</span></div>
-     <div class="chips">${e.r.map(ri=>ROLES[ri]?`<button class="rchip t-${ROLES[ri].t}" data-act="nrm" data-j="${j}" data-r="${ri}" aria-label="Quitar ${esc(ROLES[ri].n)}">${ROLES[ri].i} ${esc(ROLES[ri].n)} ✕</button>`:'').join('')}
+     <div class="chips">${e.r.map(ri=>ROLES[ri]?`<button class="rchip t-${ROLES[ri].t}" data-act="nrm" data-j="${j}" data-r="${ri}" aria-label="Quitar ${esc(ROLES[ri].n)}">${ROLES[ri].i} ${esc(ROLES[ri].n)}${ri===DRUNK&&e.dr!=null&&ROLES[e.dr]?' · cree ser '+ROLES[e.dr].i+' '+esc(ROLES[e.dr].n):''} ✕</button>`:'').join('')}
+      ${e.r.includes(DRUNK)?`<select class="nsel" data-chg="ndr" data-j="${j}" aria-label="Qué cree ser el Borracho"><option value="">🍾 Cree ser…</option>${ROLES.map((r,i)=>({r,i})).filter(x=>x.r.t==='town').map(({r,i})=>`<option value="${i}" ${e.dr===i?'selected':''}>${r.i} ${esc(r.n)}</option>`).join('')}</select>`:''}
       <select class="nsel" data-chg="nadd" data-j="${j}" aria-label="Añadir posible personaje de ${esc(q[0])}"><option value="">+ Puede ser…</option>${opts}</select></div>
      <div class="chips" style="margin-top:6px">${FX.map(f=>`<button class="chipb sm" data-act="nfx" data-j="${j}" data-f="${esc(f)}" aria-pressed="${e.fx.includes(f)}">${esc(f)}</button>`).join('')}</div></div>`;
   }).join('');
   const st=$('.pv')?$('.pv').scrollTop:0;
   pvShell(`<h1>Mis notas</h1>
    <p class="sub" style="text-align:center;margin:0">Solo se guardan en este móvil y se borran al empezar otra partida.</p>
+   ${phelp('notes','Cómo usar las notas',`<ul><li><b>Notas libres:</b> escribe lo que quieras; se guarda solo.</li><li><b>Puede ser…:</b> añade los personajes que crees que puede ser cada jugador. Puedes poner varios si dudas; tócalos para quitarlos.</li><li>Si crees que alguien es el <b>Borracho</b>, elige qué personaje cree ser.</li><li>Las etiquetas (Envenenado, Me fío, Sospechoso…) marcan lo que crees que le pasa.</li></ul>`)}
    <button class="btn primary block" data-act="pback">← Volver a mi carta</button>
    <label class="lbl" for="pnotes">Notas libres</label>
    <textarea id="pnotes" data-pin="txt" placeholder="Quién dijo qué, a quién nominaron, tus teorías…" style="min-height:130px">${esc(n.txt)}</textarea>
@@ -865,6 +975,7 @@ function renderPick(){
    <div class="pvtop"><div class="lbl">La Noche de las Ánimas</div></div>
    <h1 class="pvh">¿Quién eres?</h1>
    <p class="sub" style="text-align:center;margin:0">Toca tu nombre. Solo el tuyo: la carta es secreta.</p>
+   ${phelp('pick','Cómo funciona',`<p>Toca tu nombre y confirma que eres tú: verás tu carta de personaje. Este móvil te recordará, así que la próxima vez irás directo a tu carta.</p><p>No toques el nombre de otro: la carta de cada uno es secreta.</p>`)}
    <div class="pgrid">${G.ps.map((q,i)=>`<button class="pbtn" data-act="ppick" data-i="${i}"><b>${esc(q[0])}</b><span class="sub">Asiento ${i+1}</span></button>`).join('')}</div>
    <button class="btn block" data-act="plist">📖 Ver todos los personajes</button>
   </div></div>`;
@@ -876,7 +987,8 @@ function renderPick(){
 }
 function pickSeat(i){
   PV.d=gameCard(PV.G,i);PV.i=i;PV.conf=null;PV.view='card';
-  PV.mine=PV.G.log.filter(e=>e[2]===-1||(Array.isArray(e[2])&&e[2].includes(i)));
+  const fx=new Map((PV.G.fx||[]).map(x=>[x[0],x]));
+  PV.mine=PV.G.log.map((e,k)=>{const f=fx.get(k);if(f)e.fx=f;return e}).filter(e=>e[2]===-1||(Array.isArray(e[2])&&e[2].includes(i)));
   try{localStorage.setItem(YOU,JSON.stringify({g:PV.G.g,i,n:PV.G.ps[i][0]}))}catch(e){}
 }
 function renderPlayer(){
@@ -895,7 +1007,8 @@ function renderPlayer(){
    </div></div>
    <button class="btn primary block" id="ptog" data-act="ptoggle">Revelar mi rol</button>
    <div class="goal" id="pgoal" hidden style="--tc:var(--${r.t})"><b>TU OBJETIVO</b>${esc(GOAL[r.t])}</div>
-   ${PV.G&&PV.G.f&1?`<button class="btn block" data-act="pview" data-k="hist">📜 Historial de la partida${PV.mine.length?' · '+PV.mine.length:''}</button>`:''}
+   ${phelp('card','Qué hay en esta pantalla',`<ul><li><b>Revelar mi rol</b> gira la carta. Ocúltala cuando acabes.</li>${PV.G&&PV.G.f&1?'<li><b>Diario de la partida:</b> lo que el Narrador te ha mostrado cada noche. Desde ahí puedes escribir lo último escaneando el QR.</li>':''}${PV.G&&PV.G.f&4?'<li><b>Mis notas:</b> tus apuntes y sospechas, privados y solo en este móvil.</li>':''}<li><b>Ver todos los personajes:</b> el libro con todos los personajes y un resumen de reglas.</li></ul>`)}
+   ${PV.G&&PV.G.f&1?`<button class="btn block" data-act="pview" data-k="hist">📜 Diario de la partida${PV.mine.length?' · '+PV.mine.length:''}</button>`:''}
    ${PV.G&&PV.G.f&4?'<button class="btn block" data-act="pview" data-k="notes">✎ Mis notas y sospechas</button>':''}
    <button class="btn block" data-act="plist">📖 Ver todos los personajes</button>
    <p class="secret">Puedes volver a abrir este enlace cuando quieras: te llevará directo a tu carta. Si tu rol cambia, el Narrador volverá a enseñar el QR de la partida.</p>
@@ -964,7 +1077,8 @@ function overlays(){
 function render(){
   const old=$('#main'),st=old?old.scrollTop:0,sh=$('#sheetbody'),sst=sh?sh.scrollTop:0;
   const views={setup:vSetup,grim:vGrim,night:vNight,day:vDay,cards:vCards};
-  $('#app').innerHTML=header()+`<main id="main">${(views[S.tab]||vSetup)()}</main>`+nav()+overlays();
+  const hv=HTAB[S.tab]?hbox('t-'+S.tab,HTAB[S.tab][0],HTAB[S.tab][1]):'',v=(views[S.tab]||vSetup)();
+  $('#app').innerHTML=header()+`<main id="main">${v.startsWith('<div class="wrap">')?v.replace('<div class="wrap">','<div class="wrap">'+hv):`<div class="wrap">${hv}${v}</div>`}</main>`+nav()+overlays();
   const m=$('#main');if(m)m.scrollTop=st;
   const s2=$('#sheetbody');if(s2)s2.scrollTop=sst;
   if(U.focus){const f=document.getElementById(U.focus);if(f)f.focus();U.focus=null}
@@ -1005,7 +1119,7 @@ const A={
   plist:()=>{PV.view='list';PV.first=true;renderPlayer();const pv=$('.pv');if(pv)pv.scrollTop=0},
   pback:()=>{PV.view=PV.d?'card':'pick';renderPlayer();const pv=$('.pv');if(pv)pv.scrollTop=0},
   pview:(d)=>{PV.view=d.k;renderPlayer();const pv=$('.pv');if(pv)pv.scrollTop=0},
-  nrm:(d)=>{const n=notesLoad(),e=n.s[d.j];if(e){e.r=e.r.filter(x=>x!==+d.r);notesSave(n)}renderNotes()},
+  nrm:(d)=>{const n=notesLoad(),e=n.s[d.j];if(e){e.r=e.r.filter(x=>x!==+d.r);if(+d.r===DRUNK)e.dr=null;notesSave(n)}renderNotes()},
   nfx:(d)=>{const n=notesLoad(),e=n.s[d.j]||(n.s[d.j]={r:[],fx:[]}),i=e.fx.indexOf(d.f);if(i>=0)e.fx.splice(i,1);else e.fx.push(d.f);notesSave(n);renderNotes()},
   pfilter:(d)=>{PV.f=d.k;renderList()},
   copyroles:()=>{const u=rolesUrl();try{navigator.clipboard.writeText(u).then(()=>toast('Enlace copiado'),()=>toast('No se pudo copiar el enlace'))}catch(e){toast('No se pudo copiar el enlace')}},
@@ -1024,14 +1138,20 @@ const A={
   nok:()=>{const pk=U.pick,k=PICKS[pk.k];if(!pk||pk.sel.length!==k.n)return;U.pick=null;U.nres[k.s]=k.run(pk.sel);if(!k.nodone)S.done[k.s]=true;commit()},
   ncancel:()=>{U.pick=null;render()},
   nshow:(d)=>{
-    if(d.k==='info'){const inf=U.ninfo[d.id];U.show={k:'role',r:inf.r,x:'Uno de estos es este personaje: '+inf.ids.map(i=>P(i).name).join(' o ')};S.done[d.id]=true;autoLog(d.id)}
-    else if(d.k==='exec'){const e=P(S.exec.id);U.show={k:'role',r:e.role,x:'Hoy fue ejecutado este personaje'};S.done.sepulturero=true;autoLog('sepulturero')}
+    if(d.k==='info'){const inf=U.nfake[d.id]||U.ninfo[d.id];U.show={k:'role',r:inf.r,x:'Uno de estos es este personaje: '+inf.ids.map(i=>P(i).name).join(' o ')};S.done[d.id]=true;autoLog(d.id)}
+    else if(d.k==='exec'){const e=P(S.exec.id),lg=logGet('sepulturero');U.show={k:'role',r:lg?lg.a[1].r:e.role,x:'Hoy fue ejecutado este personaje'};S.done.sepulturero=true;autoLog('sepulturero')}
     else{U.show={k:d.k};const st=d.k==='demon'?'minfo':'dinfo';S.done[st]=true;autoLog(st)}
     commit()},
-  nfaro:(d)=>{const h=holdersOf('farolero').find(p=>p.alive);if(h)logSet('farolero','f',[h.id],[+d.v]);S.done.farolero=true;commit()},
+  nfaro:(d)=>{autoLog('farolero');const e=logGet('farolero');if(e)e.a[0]=+d.v;S.done.farolero=true;commit()},
   nans:(d)=>{const e=logGet(d.s);if(e){e.a[2]=+d.v;commit()}},
   nclose:()=>{U.show=null;render()},
-  ninfo:(d)=>{U.ninfo[d.id]=genInfo(d.id);if(logGet(d.id)){logSet(d.id,'i',[],[]);autoLog(d.id)}commit()},
+  ninfo:(d)=>{U.ninfo[d.id]=genInfo(d.id);U.nfake[d.id]=null;relog(d.id);commit()},
+  nfake:(d)=>{if(!U.ninfo[d.id])U.ninfo[d.id]=genInfo(d.id);U.nfake[d.id]=genFake(d.id);relog(d.id);commit()},
+  ntrue:(d)=>{U.nfake[d.id]=null;relog(d.id);commit()},
+  help:(d,el)=>{const c=el.nextElementSibling;if(!c)return;c.hidden=!c.hidden;HELP[d.k]=!c.hidden;el.setAttribute('aria-expanded',String(!c.hidden))},
+  reveal2:()=>{S.reveal=!S.reveal;commit();toast(S.reveal?'Los diarios mostrarán qué información era falsa':'Información falsa oculta de nuevo')},
+  pscan:()=>startScan(),
+  pscanx:()=>stopScan(),
   ndawn:()=>{
     const d=S.players.filter(p=>p.rem.includes('Muere esta noche'));
     d.forEach(p=>{p.alive=false;p.rem.splice(p.rem.indexOf('Muere esta noche'),1)});
@@ -1065,6 +1185,8 @@ const A={
   tset:(d)=>{T.total=T.left=+d.m*60;T.end=null;T.done=false;render()}
 };
 const C={
+  nrole:(d,el)=>{const e=logGet(d.s);if(e){e.a[1]={r:el.value};commit()}},
+  ndr:(d,el)=>{const n=notesLoad(),e=n.s[d.j];if(e){e.dr=el.value===''?null:+el.value;notesSave(n)}renderNotes()},
   nadd:(d,el)=>{if(el.value==='')return;const n=notesLoad(),e=n.s[d.j]||(n.s[d.j]={r:[],fx:[]}),v=+el.value;if(!e.r.includes(v))e.r.push(v);notesSave(n);renderNotes()},
   cfg:(d,el)=>{S.cfg[d.k]=el.type==='checkbox'?el.checked:+el.value;if(d.k==='tmin'&&!T.end){T.total=T.left=S.cfg.tmin*60;T.done=false}commit()},
   baseurl:(d,el)=>{S.baseUrl=el.value.trim();commit()},
