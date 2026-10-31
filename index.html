@@ -224,6 +224,10 @@ textarea{min-height:64px;resize:vertical}
 .rle.own{border-color:var(--ember);box-shadow:0 0 0 1px var(--ember),0 0 24px rgba(242,138,31,.3)}
 .ri{font-size:34px;line-height:1}
 .rb h3{font-size:22px;color:var(--tc)}
+.rle.off{opacity:.45;border-left-style:dashed}
+.rle.off .ri{filter:grayscale(1)}
+.can{display:inline-block;font-family:var(--label);font-size:12px;letter-spacing:.06em;padding:1px 8px;border-radius:999px;margin-top:4px;border:1px solid var(--out);color:var(--out)}
+.can.no{border-color:var(--dim);color:var(--dim)}
 .you{font-family:var(--label);font-size:13px;color:#1b0e02;background:var(--ember);padding:1px 8px;border-radius:999px;vertical-align:middle;margin-left:6px;letter-spacing:.04em}
 .rt{font-family:var(--label);font-size:13px;color:var(--dim);letter-spacing:.08em}
 .rb p{margin:.3em 0 0}
@@ -560,17 +564,18 @@ const RULES=['El pueblo (los buenos) gana si ejecuta al Demonio. Los malvados ga
 function renderList(){
   const d=PV.d,own=d?d.r:-1,mask=PV.mask,f=PV.f||'all',app=$('#app');
   const back=d?'← Volver a mi carta':(PV.G?'← Elegir mi nombre':'');
-  const show=(r,i)=>i===own||mask==null||((mask>>>i)&1)===1;
+  const can=i=>i===own||mask==null||((mask>>>i)&1)===1;
   const groups=['town','out','min','dem'].filter(t=>f==='all'||f===t).map(t=>{
-    const items=ROLES.map((r,i)=>({r,i})).filter(x=>x.r.t===t&&show(x.r,x.i));
+    const items=ROLES.map((r,i)=>({r,i,c:can(i)})).filter(x=>x.r.t===t).sort((a,b)=>b.c-a.c);
+    const nc=items.filter(x=>x.c).length;
     if(!items.length)return '';
-    return `<h2 class="th t-${t}">${TEAMS[t].p} · ${items.length}</h2>`+items.map(({r,i})=>`<article class="rle t-${r.t} ${i===own?'own':''}"${i===own?' id="ownrole"':''}><div class="ri" aria-hidden="true">${r.i}</div><div class="rb"><h3>${esc(r.n)}${i===own?' <span class="you">Tu personaje</span>':''}</h3><div class="rt">${TEAMS[r.t].n.toUpperCase()}</div><p>${esc(r.a)}</p><p class="rw">${wakeShort(r)}</p></div></article>`).join('');
+    return `<h2 class="th t-${t}">${TEAMS[t].p} · ${mask==null?items.length:nc+' de '+items.length+' posibles'}</h2>`+items.map(({r,i,c})=>`<article class="rle t-${r.t} ${i===own?'own':''} ${c?'':'off'}"${i===own?' id="ownrole"':''}><div class="ri" aria-hidden="true">${r.i}</div><div class="rb"><h3>${esc(r.n)}${i===own?' <span class="you">Tu personaje</span>':''}</h3><div class="rt">${TEAMS[r.t].n.toUpperCase()}</div>${mask==null?'':c?'<span class="can">✓ Puede salir en esta partida</span>':'<span class="can no">✕ No entra en esta partida</span>'}<p>${esc(r.a)}</p><p class="rw">${wakeShort(r)}</p></div></article>`).join('');
   }).join('');
   const fil=[['all','Todos'],['town','Aldeanos'],['out','Marginados'],['min','Esbirros'],['dem','Demonios']].map(([k,l])=>`<button class="chipb" data-act="pfilter" data-k="${k}" aria-pressed="${f===k}">${l}</button>`).join('');
   const em=Array.from({length:10},(_,i)=>`<span style="left:${(i*9.7+6)%100}%;animation-duration:${9+(i*1.9)%7}s;animation-delay:${(i*1.7)%9}s"></span>`).join('');
   app.innerHTML=`<div class="embers" aria-hidden="true">${em}</div><div class="pv"><div class="pvbox wide"><div class="lst">
    <div class="pvtop"><div class="lbl">La Noche de las Ánimas</div></div><h1>Libro de personajes</h1>
-   <p class="sub" style="text-align:center;margin:0">${mask==null?'Todos los personajes del script.':'Los personajes que pueden salir en esta partida.'}</p>
+   <p class="sub" style="text-align:center;margin:0">${mask==null?'Todos los personajes del script.':'Marcados con ✓ los personajes que el Narrador ha metido en el bote de esta partida. Que puedan salir no significa que estén en juego.'}</p>
    ${back?`<button class="btn primary block" data-act="pback">${back}</button>`:''}
    <details class="rules"><summary>Resumen de reglas</summary><ul>${RULES.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></details>
    <div class="fil" role="group" aria-label="Filtrar por bando">${fil}</div>
