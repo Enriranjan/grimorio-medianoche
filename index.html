@@ -951,7 +951,7 @@ function renderNotes(){
     const e=n.s[j]||{r:[],fx:[]};
     return `<div class="nrow"><div class="nrh"><b>${esc(q[0])}</b><span class="sub">Asiento ${j+1}</span></div>
      <div class="chips">${e.r.map(ri=>ROLES[ri]?`<button class="rchip t-${ROLES[ri].t}" data-act="nrm" data-j="${j}" data-r="${ri}" aria-label="Quitar ${esc(ROLES[ri].n)}">${ROLES[ri].i} ${esc(ROLES[ri].n)}${ri===DRUNK&&e.dr!=null&&ROLES[e.dr]?' · cree ser '+ROLES[e.dr].i+' '+esc(ROLES[e.dr].n):''} ✕</button>`:'').join('')}
-      ${e.r.includes(DRUNK)?`<select class="nsel" data-chg="ndr" data-j="${j}" aria-label="Qué cree ser el Borracho"><option value="">🍾 Cree ser…</option>${ROLES.map((r,i)=>({r,i})).filter(x=>x.r.t==='town').map(({r,i})=>`<option value="${i}" ${e.dr===i?'selected':''}>${r.i} ${esc(r.n)}</option>`).join('')}</select>`:''}
+      ${e.r.includes(DRUNK)&&e.dr==null?`<select class="nsel" data-chg="ndr" data-j="${j}" aria-label="Qué cree ser el Borracho"><option value="">🍾 Cree ser…</option>${ROLES.map((r,i)=>({r,i})).filter(x=>x.r.t==='town').map(({r,i})=>`<option value="${i}" ${e.dr===i?'selected':''}>${r.i} ${esc(r.n)}</option>`).join('')}</select>`:''}
       <select class="nsel" data-chg="nadd" data-j="${j}" aria-label="Añadir posible personaje de ${esc(q[0])}"><option value="">+ Puede ser…</option>${opts}</select></div>
      <div class="chips" style="margin-top:6px">${FX.map(f=>`<button class="chipb sm" data-act="nfx" data-j="${j}" data-f="${esc(f)}" aria-pressed="${e.fx.includes(f)}">${esc(f)}</button>`).join('')}</div></div>`;
   }).join('');
