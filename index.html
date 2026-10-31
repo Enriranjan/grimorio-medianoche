@@ -510,6 +510,7 @@ function vSetup(){
   const live=S.started?`<section class="panel" style="border-color:var(--ember)"><h2>Partida en curso</h2><p class="sub">Enseña el QR de la partida a la mesa: cada jugador lo escanea, elige su nombre y ve su carta.</p><button class="btn primary block" style="margin-top:8px" data-act="gameqr">▣ Mostrar QR de la partida</button>${S.cfg.hist?`<button class="btn block" style="margin-top:8px" data-act="reveal2" aria-pressed="${!!S.reveal}">${S.reveal?'🏁 Información falsa revelada · ocultar':'🏁 Fin de partida: revelar la información falsa'}</button><p class="sub" style="font-size:14px;margin-top:4px">${S.reveal?'Al volver a escanear, cada diario marca qué era falso, por qué y cuál era la verdad.':'Úsalo al terminar: los diarios mostrarán qué información era falsa y por qué.'}</p>`:''}</section>`:'';
   return `<div class="wrap">
   ${live}
+  <button class="btn block" data-act="bookqr">📖 QR del libro de personajes</button>
   <section class="panel"><h2>Jugadores</h2><p class="sub">El orden es el de los asientos, en círculo. Los nombres son de ejemplo: cámbialos por los de tu mesa.</p>
    <ul class="plist">${plist}</ul>
    <div class="row"><input type="text" id="newname" placeholder="Nombre del jugador" maxlength="24" autocomplete="off" style="flex:1;min-width:140px"><button class="btn" data-act="add">Añadir</button></div>
@@ -1052,6 +1053,15 @@ function overlays(){
       h+=`</div>`;
     }
   }
+  if(U.bqr){
+    const url=rolesUrl(),svg=url?qrSVG(url):'';
+    h+=`<div class="overlay center" role="dialog" aria-modal="true" aria-label="QR del libro de personajes"><div class="bd" data-act="closebqr"></div><div class="qrbox">
+      <div class="lbl">La Noche de las Ánimas</div><h2>Libro de personajes</h2>
+      ${svg?`<div class="qrframe">${svg}</div><p class="sub">Escanead este código para ver todos los personajes y un resumen de reglas mientras se prepara la partida. No muestra el rol de nadie.</p>`:`<p class="verdict">No se puede generar el QR. Revisa la dirección de la web en la pestaña Tarjetas.</p>`}
+      <p class="sub" style="font-size:14px">Marca con ✓ los ${S.pool.length} personajes que tienes seleccionados ahora. Si cambias la selección, vuelve a enseñarlo.</p>
+      <div class="row" style="justify-content:center"><button class="btn sm" data-act="copyroles" ${url?'':'disabled'}>Copiar enlace</button><button class="btn primary" data-act="closebqr">Cerrar</button></div>
+    </div></div>`;
+  }
   if(U.gqr&&S.started){
     const url=gameUrl(),svg=url?qrSVG(url):'';
     h+=`<div class="overlay center" role="dialog" aria-modal="true" aria-label="QR de la partida"><div class="bd" data-act="closegqr"></div><div class="qrbox">
@@ -1119,6 +1129,8 @@ const A={
   done:(d)=>{S.done[d.id]=!S.done[d.id];if(S.done[d.id])autoLog(d.id);commit()},
   showcard:(d)=>{U.card=+d.id;U.stage=0;U.sheet=null;U.gqr=false;render()},
   gameqr:()=>{U.gqr=true;U.sheet=null;U.card=null;render()},
+  bookqr:()=>{U.bqr=true;render()},
+  closebqr:()=>{U.bqr=false;render()},
   closegqr:()=>{U.gqr=false;render()},
   copygame:()=>{const u=gameUrl();try{navigator.clipboard.writeText(u).then(()=>toast('Enlace copiado'),()=>toast('No se pudo copiar el enlace'))}catch(e){toast('No se pudo copiar el enlace')}},
   ppick:(d)=>{PV.conf=+d.i;renderPick()},
@@ -1224,7 +1236,7 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.target.id==='newname'){e.preventDefault();A.add()}
-  if(e.key==='Escape'){if(PV.conf!=null){A.pno()}else if(!S){}else if(U.confirm){A.no()}else if(U.show){A.nclose()}else if(U.pick){A.ncancel()}else if(U.gqr){A.closegqr()}else if(U.sheet){A.closesheet()}else if(U.card){A.closecard()}}
+  if(e.key==='Escape'){if(PV.conf!=null){A.pno()}else if(!S){}else if(U.confirm){A.no()}else if(U.show){A.nclose()}else if(U.pick){A.ncancel()}else if(U.bqr){A.closebqr()}else if(U.gqr){A.closegqr()}else if(U.sheet){A.closesheet()}else if(U.card){A.closecard()}}
 });
 
 /* ============ Temporizador ============ */
