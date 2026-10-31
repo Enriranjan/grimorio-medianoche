@@ -127,7 +127,15 @@ textarea{min-height:64px;resize:vertical}
 .step h3{font-size:21px;color:var(--tc,var(--bone))}
 .step .who{font-size:16px}
 .step .rem{color:var(--dim);font-size:16px;grid-column:2/4}
-.step .btn{grid-row:1;grid-column:3}
+.step>.btn{grid-row:1;grid-column:3}
+.ntools{grid-column:2/4;display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.ntools .row{gap:6px}
+.nres{border:1px solid var(--ember);background:rgba(242,138,31,.1);border-radius:10px;padding:7px 10px;font-size:16px}
+.nwarn{color:#ffb35c;font-size:15px}
+.big2{font-family:var(--display);font-size:30px;color:var(--ember);line-height:1}
+.showhd{font-family:var(--label);letter-spacing:.12em;color:var(--ember);text-align:center;background:var(--ink2);border:1px solid var(--line);border-radius:10px;padding:6px 12px}
+.card.mini{padding:14px 16px}.card.mini .ci{font-size:52px}.card.mini h2{font-size:24px}.card.mini .ab{font-size:16px}
+.pickl{display:flex;flex-direction:column;gap:6px}
 .faro{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .faro span{border:1px dashed var(--line);border-radius:8px;padding:2px 8px;font-size:15px}
 
@@ -270,7 +278,7 @@ const ROLES=[
  {id:'santo',t:'out',i:'🕊️',n:'El Santo de Trapo',a:'Si eres ejecutado, tu equipo pierde.',f:0,o:0,r:''},
  {id:'torpe',t:'out',i:'🤡',n:'El Disfrazado Torpe',a:'Cuando mueres, eliges en el acto a un jugador vivo: si es malvado, tu equipo pierde.',f:0,o:0,r:''},
  {id:'envenenadora',t:'min',i:'☠️',n:'La Envenenadora de Brebajes',a:'Cada noche eliges a un jugador: queda envenenado hasta el amanecer (su habilidad falla y su información puede ser falsa).',f:10,o:10,r:'Despierta a la Envenenadora: señala a un jugador. Pon la marca Envenenado (quita la anterior).'},
- {id:'bruja',t:'min',i:'🐈‍⬛',n:'La Bruja de los Gatos',a:'Cada noche eliges a un jugador: si nomina mañana, muere en el acto.',f:15,o:20,r:'Despierta a la Bruja: señala a un jugador. Pon la marca Maldito (quita la anterior).'},
+ {id:'bruja',t:'min',i:'🐈‍⬛',n:'La Bruja de los Gatos',a:'Cada noche eliges a un jugador: si nomina mañana, muere en el acto.',f:15,o:20,r:'Despierta a la Bruja: señala a un jugador. Pon la marca Embrujado (quita la anterior). Si mañana nomina, muere.'},
  {id:'espia',t:'min',i:'🕷️',n:'El Espía Tejedor',a:'Cada noche ves el grimorio. Puedes aparecer como bueno, Aldeano o Marginado.',f:20,o:90,r:'Enséñale el grimorio unos segundos.'},
  {id:'dama',t:'min',i:'👻',n:'La Dama del Velo',a:'Si hay 5 o más jugadores vivos y el Demonio muere, te conviertes en el Demonio.',f:0,o:0,r:''},
  {id:'anfitrion',t:'min',i:'🎩',n:'El Anfitrión Siniestro',a:'Preparación: hay 2 Marginados más y 2 Aldeanos menos de lo habitual.',f:0,o:0,r:'',mod:true},
@@ -279,14 +287,14 @@ const ROLES=[
 ];
 const R=Object.fromEntries(ROLES.map(r=>[r.id,r]));
 const COMP={5:[3,0,1,1],6:[3,1,1,1],7:[5,0,1,1],8:[5,1,1,1],9:[5,2,1,1],10:[7,0,2,1],11:[7,1,2,1],12:[7,2,2,1],13:[9,0,3,1],14:[9,1,3,1],15:[9,2,3,1]};
-const CHIPS=['Envenenado','Protegido','Maldito','Marcado','Falsa pista','Sin habilidad','Habilidad usada','Muere esta noche'];
+const CHIPS=['Envenenado','Protegido','Maldito','Embrujado','Marcado','Falsa pista','Sin habilidad','Habilidad usada','Muere esta noche'];
 const NAMES=['Ana','Biel','Carmen','Dani','Elena','Fran','Gema','Hugo'];
 const KEY='grimorio-medianoche-v1';
 const YOU='grimorio-medianoche-yo';
 
 /* ============ Estado ============ */
 let S;
-const U={gqr:false,sheet:null,card:null,stage:0,from:'',to:'',voting:null,votes:[],confirm:null,focus:null};
+const U={gqr:false,sheet:null,card:null,stage:0,from:'',to:'',voting:null,votes:[],confirm:null,focus:null,pick:null,show:null,nres:{},ninfo:{}};
 const T={total:180,left:180,end:null,ac:null,done:false};
 
 function fresh(){return{v:1,players:NAMES.map((n,i)=>({id:i+1,name:n,role:null,shown:null,alive:true,ghost:true,rem:[],note:'',seen:false})),nextId:NAMES.length+1,pool:ROLES.map(r=>r.id),started:false,day:1,night:true,done:{},noms:[],nomd:[],nomr:[],block:null,bluffs:[],hide:false,tab:'setup'}}
@@ -325,16 +333,17 @@ function deal(){
   const spare=shuffle(ROLES.filter(r=>r.t==='town'&&!used.has(r.id)));
   S.players.forEach(p=>{if(p.role==='borracho'){const r=spare.shift()||shuffle(ROLES.filter(x=>x.t==='town'))[0];p.shown=r.id;used.add(r.id)}});
   S.bluffs=shuffle(ROLES.filter(r=>(r.t==='town'||r.t==='out')&&!used.has(r.id))).slice(0,3).map(r=>r.id);
-  Object.assign(S,{started:true,gid:newGid(),day:1,night:true,done:{},noms:[],nomd:[],nomr:[],block:null,tab:'grim'});
-  U.sheet=null;U.voting=null;U.votes=[];U.gqr=true;
+  Object.assign(S,{started:true,gid:newGid(),exec:null,day:1,night:true,done:{},noms:[],nomd:[],nomr:[],block:null,tab:'grim'});
+  U.sheet=null;U.voting=null;U.votes=[];U.gqr=true;U.nres={};U.ninfo={};
   commit();toast('Roles repartidos. Enseña el QR de la partida');
 }
 function resetGame(){
-  S.started=false;S.gid=null;S.day=1;S.night=true;S.done={};S.noms=[];S.nomd=[];S.nomr=[];S.block=null;S.bluffs=[];S.tab='setup';
+  S.started=false;S.gid=null;S.exec=null;S.day=1;S.night=true;S.done={};S.noms=[];S.nomd=[];S.nomr=[];S.block=null;S.bluffs=[];S.tab='setup';
   S.players.forEach(p=>{p.role=null;p.shown=null;p.alive=true;p.ghost=true;p.rem=[];p.note='';p.seen=false});
   U.sheet=null;U.voting=null;U.votes=[];U.gqr=false;commit();
 }
 function phase(){
+  U.nres={};U.ninfo={};
   if(S.night){S.night=false;S.done={};S.noms=[];S.nomd=[];S.nomr=[];S.block=null;U.voting=null;U.votes=[];S.tab='day'}
   else{S.night=true;S.day++;S.done={};S.tab='night'}
   commit();
@@ -427,6 +436,90 @@ function vGrim(){
   </div>`;
 }
 
+/* ---- Atajos de la noche ---- */
+const isEvil=p=>['min','dem'].includes(teamOf(p));
+const holdersOf=id=>S.players.filter(p=>p.role===id||p.shown===id);
+function markOnly(chip,id){S.players.forEach(p=>{const i=p.rem.indexOf(chip);if(i>=0)p.rem.splice(i,1)});const p=P(id);if(p&&!p.rem.includes(chip))p.rem.push(chip)}
+function addChip(p,chip){if(!p.rem.includes(chip))p.rem.push(chip)}
+const safe=p=>p.rem.includes('Protegido')||(p.role==='soldado'&&!p.rem.includes('Envenenado'));
+function tokenCard(rid,mini){const r=R[rid];if(!r)return '';return `<div class="card ${mini?'mini':''}" style="--tc:var(--${r.t})"><div class="ct">${TEAMS[r.t].n.toUpperCase()}</div><div class="ci">${r.i}</div><h2>${esc(r.n)}</h2><p class="ab">${esc(r.a)}</p></div>`}
+const PICKS={
+  envenenadora:{s:'envenenadora',n:1,t:'¿A quién envenena?',run:([a])=>{markOnly('Envenenado',a);return `☠️ <b>${esc(P(a).name)}</b> queda envenenado (se quitó la marca anterior).`}},
+  bruja:{s:'bruja',n:1,t:'¿A quién embruja?',run:([a])=>{markOnly('Embrujado',a);return `🐈‍⬛ <b>${esc(P(a).name)}</b> queda embrujado: si nomina mañana, muere en el acto.`}},
+  guardiana:{s:'guardiana',n:1,t:'¿A quién protege?',run:([a])=>{markOnly('Protegido',a);return `🧂 <b>${esc(P(a).name)}</b> está protegido esta noche.`}},
+  calabaza:{s:'calabaza',n:1,t:'¿A quién ataca la Calabaza?',run:([a])=>{
+    const p=P(a);
+    if(teamOf(p)==='dem'&&p.role==='calabaza'){addChip(p,'Muere esta noche');const mins=S.players.filter(q=>q.alive&&teamOf(q)==='min');return `🎃 Se ha elegido a sí misma: <b>${esc(p.name)}</b> muere. ${mins.length?'Convierte a un Esbirro vivo ('+names(mins)+') en la Calabaza Hueca desde su ficha en el grimorio y avísale.':'No quedan Esbirros vivos.'}`}
+    if(safe(p))return `🛡️ <b>${esc(p.name)}</b> no muere: ${p.rem.includes('Protegido')?'está protegido':'es el Soldado de Paja'}.`;
+    addChip(p,'Muere esta noche');
+    return `🎃 <b>${esc(p.name)}</b> morirá al amanecer.${p.role==='alcaldesa'&&!p.rem.includes('Envenenado')?' Es la Alcaldesa: puedes hacer que muera otro jugador en su lugar.':''}`}},
+  jinete:{s:'jinete',n:1,t:'¿A quién maldice el Jinete?',run:([a])=>{
+    const prev=S.players.find(q=>q.rem.includes('Maldito'));let t='';
+    if(prev&&prev.alive){if(safe(prev))t=`<b>${esc(prev.name)}</b> (maldito anterior) se salva: ${prev.rem.includes('Protegido')?'está protegido':'es el Soldado de Paja'}. `;else{addChip(prev,'Muere esta noche');t=`<b>${esc(prev.name)}</b> (maldito anterior) muere ahora. `}}
+    markOnly('Maldito',a);return `🐴 ${t}<b>${esc(P(a).name)}</b> queda maldito.`}},
+  vidente:{s:'vidente',n:2,any:true,t:'¿Qué 2 jugadores elige la Vidente?',run:(ids)=>{
+    const ps=ids.map(P),yes=ps.some(p=>teamOf(p)==='dem'||p.rem.includes('Falsa pista'));
+    return `🔮 ${names(ps)}: <span class="big2">${yes?'SÍ':'NO'}</span> — ${yes?'asiente':'niega con la cabeza'}.`}},
+  vidente_fp:{s:'vidente',n:1,any:true,good:true,t:'¿Quién es la falsa pista de la Vidente? (un jugador bueno)',run:([a])=>{markOnly('Falsa pista',a);return `🔮 <b>${esc(P(a).name)}</b> es la falsa pista: a la Vidente siempre le aparece como Demonio.`}},
+  costurera:{s:'costurera',n:2,any:true,t:'¿Qué 2 jugadores elige la Costurera?',run:(ids)=>{
+    const ps=ids.map(P),same=isEvil(ps[0])===isEvil(ps[1]);
+    holdersOf('costurera').forEach(p=>addChip(p,'Habilidad usada'));
+    return `🧵 ${names(ps)}: <span class="big2">${same?'SÍ':'NO'}</span> — ${same?'son del mismo bando, asiente':'son de bandos distintos, niega'}. Marcada «Habilidad usada».`}},
+  murcielago:{s:'murcielago',n:1,any:true,t:'¿A quién elige el Murciélago?',run:([a])=>{U.show={k:'role',r:P(a).role,x:'Este es el personaje de '+P(a).name};return `🦇 Enséñale la ficha de <b>${esc(P(a).name)}</b>: ${R[P(a).role]?R[P(a).role].i+' '+esc(R[P(a).role].n):'sin personaje'}.`}}
+};
+function genInfo(id){
+  const t={bibliotecaria:'out',cronista:'town',detective:'min'}[id],hs=holdersOf(id).map(p=>p.id);
+  const c=S.players.filter(p=>teamOf(p)===t&&!hs.includes(p.id));
+  if(!c.length)return {none:true};
+  const a=shuffle(c)[0],b=shuffle(S.players.filter(p=>p.id!==a.id&&!hs.includes(p.id)))[0];
+  return {r:a.role,ids:shuffle([a,b].filter(Boolean)).map(p=>p.id)};
+}
+function nightTools(s){
+  const pb=(k,l)=>`<button class="btn sm" data-act="npick" data-k="${k}">${l}</button>`;
+  const sb=(k,l,extra='')=>`<button class="btn sm" data-act="nshow" data-k="${k}" ${extra}>${l}</button>`;
+  let b='',warn='';
+  if(s.holders){
+    const bad=s.holders.filter(p=>(p.shown===s.id&&p.role!==s.id)||p.rem.includes('Envenenado'));
+    if(bad.length)warn=`<div class="nwarn">⚠ ${names(bad)} ${bad.length>1?'están':'está'} borracho o envenenado: su habilidad falla y puedes darle información falsa.</div>`;
+  }
+  switch(s.id){
+    case 'envenenadora':b=pb('envenenadora','☠️ Elegir envenenado');break;
+    case 'bruja':b=pb('bruja','🐈‍⬛ Elegir embrujado');break;
+    case 'guardiana':b=pb('guardiana','🧂 Elegir protegido');break;
+    case 'calabaza':b=pb('calabaza','🎃 Elegir víctima');break;
+    case 'jinete':b=pb('jinete','🐴 Elegir maldito');break;
+    case 'vidente':b=pb('vidente','🔮 Elegir 2 jugadores')+(S.players.some(p=>p.rem.includes('Falsa pista'))?'':pb('vidente_fp','Poner falsa pista'));break;
+    case 'costurera':b=U.nres.costurera?'':s.holders.some(p=>p.rem.includes('Habilidad usada'))?'<span class="sub">Ya usó su habilidad: no la despiertes.</span>':pb('costurera','🧵 Elegir 2 jugadores');break;
+    case 'murcielago':b=s.holders.some(p=>p.rem.includes('Muere esta noche'))?pb('murcielago','🦇 Elegir jugador'):'<span class="sub">No muere esta noche: no lo despiertes.</span>';break;
+    case 'farolero':{
+      const out=s.holders.filter(p=>p.alive).map(p=>{
+        const al=S.players.filter(q=>q.alive||q.id===p.id),i=al.indexOf(p);
+        if(al.length<3)return `${esc(p.name)}: no tiene 2 vecinos vivos.`;
+        const nb=[al[(i-1+al.length)%al.length],al[(i+1)%al.length]],n=nb.filter(isEvil).length;
+        const odd=nb.filter(q=>q.role==='espia'||q.role==='eremita');
+        return `🏮 Vecinos de ${esc(p.name)}: ${names(nb)} → <span class="big2">${n}</span> ${n===1?'dedo':'dedos'}.${odd.length?` <span class="nwarn">${names(odd)} puede registrarse distinto (Espía/Eremita): decides tú.</span>`:''}`});
+      b=`<div class="nres">${out.join('<br>')}</div>`;break}
+    case 'sepulturero':{
+      const e=S.exec&&S.exec.day===S.day-1?P(S.exec.id):null;
+      b=e?`<span>Hoy fue ejecutado <b>${esc(e.name)}</b>.</span>`+sb('exec','⚰️ Enseñar su ficha'):'<span class="sub">Hoy no hubo ejecución registrada: no lo despiertes.</span>';break}
+    case 'bibliotecaria':case 'cronista':case 'detective':{
+      const inf=U.ninfo[s.id];
+      if(!inf)b=`<button class="btn sm" data-act="ninfo" data-id="${s.id}">✨ Generar información</button>`;
+      else if(inf.none)b=`<div class="nres">No hay ${s.id==='bibliotecaria'?'Marginados':'personajes de ese tipo'} en juego: haz el gesto de cero.</div><button class="btn sm" data-act="ninfo" data-id="${s.id}">↻ Repetir</button>`;
+      else b=`<div class="nres">Ficha ${R[inf.r].i} <b>${esc(R[inf.r].n)}</b> · señala a ${names(inf.ids.map(P))}.</div><div class="row">${sb('info','🃏 Enseñar ficha',`data-id="${s.id}"`)}<button class="btn sm" data-act="ninfo" data-id="${s.id}">↻ Otra opción</button></div>`;
+      break}
+    case 'espia':b=`<button class="btn sm" data-act="tab" data-k="grim">❂ Abrir grimorio para enseñárselo</button>`;break;
+    case 'minfo':b=sb('demon','🩸 Enseñar quién es el Demonio');break;
+    case 'dinfo':b=sb('minions','🕸️ Enseñar sus Esbirros')+sb('bluffs','🃏 Enseñar los 3 faroles');break;
+    case 'dawn':{
+      const d=S.players.filter(p=>p.rem.includes('Muere esta noche'));
+      b=`<button class="btn sm primary" data-act="ndawn">🌅 Aplicar muertes${d.length?': '+names(d):' (nadie)'}</button>`;break}
+  }
+  const res=U.nres[s.id];
+  if(!b&&!warn&&!res)return '';
+  return `<div class="ntools">${warn}${b?`<div class="row">${b}</div>`:''}${res?`<div class="nres">${res}</div>`:''}</div>`;
+}
+
 function vNight(){
   if(!S.started)return needStart();
   if(!S.night)return `<div class="wrap"><div class="panel empty"><p>Es de día. La noche empieza cuando pulses Anochece.</p><button class="btn primary" data-act="phase">☾ Anochece</button></div></div>`;
@@ -437,7 +530,7 @@ function vNight(){
       const tags=[];if(!p.alive)tags.push('muerto');if(p.shown===s.id&&p.role!==s.id)tags.push('es el Borracho: su habilidad falla');
       return `<b>${esc(p.name)}</b>${tags.length?` <em>(${tags.join(', ')})</em>`:''}`}).join(', '):'';
     const bl=s.bluffs?`<div class="faro">${S.bluffs.map(id=>`<span>${R[id].i} ${esc(R[id].n)}</span>`).join('')}</div>`:'';
-    return `<div class="step ${done?'done':''} ${s.t?'t-'+s.t:''}"><span class="ic" aria-hidden="true">${s.i}</span><h3>${esc(s.n)}</h3><button class="btn sm" data-act="done" data-id="${s.id}" aria-pressed="${!!done}">${done?'Hecho ✓':'Marcar'}</button>${who?`<div class="who">${who}</div>`:'<div></div>'}<div class="rem">${esc(s.txt)}${bl}</div></div>`;
+    return `<div class="step ${done?'done':''} ${s.t?'t-'+s.t:''}"><span class="ic" aria-hidden="true">${s.i}</span><h3>${esc(s.n)}</h3><button class="btn sm" data-act="done" data-id="${s.id}" aria-pressed="${!!done}">${done?'Hecho ✓':'Marcar'}</button>${who?`<div class="who">${who}</div>`:'<div></div>'}<div class="rem">${esc(s.txt)}${bl}</div>${nightTools(s)}</div>`;
   }).join('');
   const pend=steps.filter(s=>!S.done[s.id]).length;
   return `<div class="wrap"><div class="panel"><h2>Noche ${S.day}${S.day===1?' · primera noche':''}</h2><p class="sub">${pend?pend+' pasos pendientes':'Todos los pasos hechos'}. Orden de despertar para los personajes en juego.</p></div>${html}<button class="btn primary block" data-act="phase">☀ Amanece</button></div>`;
@@ -663,6 +756,22 @@ function overlays(){
       <div class="row" style="justify-content:center"><button class="btn sm" data-act="copygame" ${url?'':'disabled'}>Copiar enlace</button><button class="btn primary" data-act="closegqr">Cerrar</button></div>
     </div></div>`;
   }
+  if(U.pick){
+    const k=PICKS[U.pick.k],sel=U.pick.sel;
+    const list=S.players.filter(p=>(k.any||p.alive)&&(!k.good||!isEvil(p)));
+    h+=`<div class="overlay" role="dialog" aria-modal="true" aria-label="${esc(k.t)}"><div class="bd" data-act="ncancel"></div><div class="sheet"><h2>${esc(k.t)}</h2><p class="sub">${k.n>1?'Elige '+k.n+' jugadores.':'Elige un jugador.'}</p>
+     <div class="pickl">${list.map(p=>{const on=sel.includes(p.id),r=R[p.role];return `<button class="vote" data-act="nsel" data-id="${p.id}" aria-pressed="${on}"><span class="ck" aria-hidden="true">${on?'✓':''}</span><span style="flex:1">${esc(p.name)}${p.alive?'':' †'}</span><span class="sub">${r&&!S.hide?r.i+' '+esc(r.n):''}${p.rem.length?' · '+p.rem.map(esc).join(', '):''}</span></button>`}).join('')}</div>
+     <div class="row"><button class="btn primary" data-act="nok" ${sel.length===k.n?'':'disabled'}>Confirmar</button><button class="btn" data-act="ncancel">Cancelar</button></div></div></div>`;
+  }
+  if(U.show){
+    const v=U.show;let c='';
+    const dems=S.players.filter(p=>teamOf(p)==='dem'),mins=S.players.filter(p=>teamOf(p)==='min');
+    if(v.k==='role')c=`<div class="showhd">${esc(v.x||'')}</div>${tokenCard(v.r)}`;
+    if(v.k==='bluffs')c=`<div class="showhd">ESTOS PERSONAJES NO ESTÁN EN JUEGO</div>${S.bluffs.map(id=>tokenCard(id,true)).join('')}`;
+    if(v.k==='demon')c=`<div class="cover"><div class="lbl">ESTE ES EL DEMONIO</div><h2 style="font-size:40px;color:var(--dem)">${names(dems)}</h2>${mins.length>1?`<p class="sub">Esbirros: ${names(mins)}</p>`:''}</div>`;
+    if(v.k==='minions')c=`<div class="cover"><div class="lbl">ESTOS SON TUS ESBIRROS</div><h2 style="font-size:40px;color:var(--min)">${names(mins)}</h2></div>`;
+    h+=`<div class="overlay center" role="dialog" aria-modal="true"><div class="bd" data-act="nclose"></div><div class="cardwrap">${c}<button class="btn primary block" style="max-width:360px" data-act="nclose">Cerrar</button></div></div>`;
+  }
   if(U.confirm){
     h+=`<div class="overlay center" role="alertdialog" aria-modal="true"><div class="bd" data-act="no"></div><div class="cover"><h2>${esc(U.confirm.t)}</h2><div class="row"><button class="btn danger" data-act="yes">Confirmar</button><button class="btn" data-act="no">Cancelar</button></div></div></div>`;
   }
@@ -723,6 +832,22 @@ const A={
   reveal:()=>{U.stage=1;render()},
   hidecard:()=>{const p=P(U.card);if(p)p.seen=true;U.card=null;U.stage=0;commit()},
   closecard:()=>{U.card=null;U.stage=0;render()},
+  npick:(d)=>{U.pick={k:d.k,sel:[]};render()},
+  nsel:(d)=>{const k=PICKS[U.pick.k],sel=U.pick.sel,id=+d.id,i=sel.indexOf(id);if(i>=0)sel.splice(i,1);else{if(sel.length>=k.n)sel.shift();sel.push(id)}render()},
+  nok:()=>{const pk=U.pick,k=PICKS[pk.k];if(!pk||pk.sel.length!==k.n)return;U.pick=null;U.nres[k.s]=k.run(pk.sel);S.done[k.s]=true;commit()},
+  ncancel:()=>{U.pick=null;render()},
+  nshow:(d)=>{
+    if(d.k==='info'){const inf=U.ninfo[d.id];U.show={k:'role',r:inf.r,x:'Uno de estos es este personaje: '+inf.ids.map(i=>P(i).name).join(' o ')}}
+    else if(d.k==='exec'){const e=P(S.exec.id);U.show={k:'role',r:e.role,x:'Hoy fue ejecutado este personaje'}}
+    else U.show={k:d.k};
+    render()},
+  nclose:()=>{U.show=null;render()},
+  ninfo:(d)=>{U.ninfo[d.id]=genInfo(d.id);render()},
+  ndawn:()=>{
+    const d=S.players.filter(p=>p.rem.includes('Muere esta noche'));
+    d.forEach(p=>{p.alive=false;p.rem.splice(p.rem.indexOf('Muere esta noche'),1)});
+    S.players.forEach(p=>{const i=p.rem.indexOf('Protegido');if(i>=0)p.rem.splice(i,1)});
+    U.nres.dawn=d.length?'Han muerto esta noche: <b>'+names(d)+'</b>. Anúncialo.':'Nadie ha muerto esta noche.';S.done.dawn=true;commit()},
   openvote:()=>{if(!U.from||!U.to)return;U.voting={from:+U.from,to:+U.to};U.votes=[];render()},
   cancelvote:()=>{U.voting=null;U.votes=[];render()},
   vote:(d)=>{const id=+d.id,i=U.votes.indexOf(id);if(i>=0)U.votes.splice(i,1);else U.votes.push(id);render()},
@@ -738,7 +863,7 @@ const A={
     }
     U.voting=null;U.votes=[];commit();toast(msg);
   },
-  exec:()=>{const p=P(S.block.id);p.alive=false;S.block=null;commit();toast(p.name+' ha sido ejecutado. Revisa si termina la partida')},
+  exec:()=>{const p=P(S.block.id);p.alive=false;S.exec={day:S.day,id:p.id};S.block=null;commit();toast(p.name+' ha sido ejecutado. Revisa si termina la partida')},
   spare:()=>{S.block=null;commit()},
   tstart:()=>{
     try{T.ac=T.ac||new (window.AudioContext||window.webkitAudioContext)();T.ac.resume&&T.ac.resume()}catch(e){}
@@ -773,7 +898,7 @@ document.addEventListener('change',e=>{
 });
 document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.target.id==='newname'){e.preventDefault();A.add()}
-  if(e.key==='Escape'){if(PV.conf!=null){A.pno()}else if(!S){}else if(U.confirm){A.no()}else if(U.gqr){A.closegqr()}else if(U.sheet){A.closesheet()}else if(U.card){A.closecard()}}
+  if(e.key==='Escape'){if(PV.conf!=null){A.pno()}else if(!S){}else if(U.confirm){A.no()}else if(U.show){A.nclose()}else if(U.pick){A.ncancel()}else if(U.gqr){A.closegqr()}else if(U.sheet){A.closesheet()}else if(U.card){A.closecard()}}
 });
 
 /* ============ Temporizador ============ */
