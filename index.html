@@ -380,17 +380,24 @@ function deal(){
   if(minPick.some(r=>r.mod)){O+=2;Tn-=2}
   if(out.length<O){toast('Faltan Marginados activos: necesitas '+O);return}
   if(town.length<Tn){toast('Faltan Aldeanos activos: necesitas '+Tn);return}
-  const chosen=[...dem.slice(0,D),...minPick,...out.slice(0,O),...town.slice(0,Tn)];
+  /* El Borracho necesita un Aldeano marcado que no esté en juego para su carta falsa */
+  let outPick=out.slice(0,O);
+  if(outPick.some(r=>r.id==='borracho')&&town.length<=Tn){
+    const alt=out.filter(r=>r.id!=='borracho');
+    if(alt.length>=O)outPick=alt.slice(0,O);
+    else{toast('El Borracho necesita un Aldeano marcado más, que no esté en juego, para su carta. Marca otro Aldeano o desmarca el Borracho');return}
+  }
+  const chosen=[...dem.slice(0,D),...minPick,...outPick,...town.slice(0,Tn)];
   const used=new Set(chosen.map(r=>r.id));
   const order=shuffle(chosen);
   S.players.forEach((p,i)=>{p.role=order[i].id;p.shown=null;p.alive=true;p.ghost=true;p.rem=[];p.seen=false});
-  const spare=[...shuffle(ROLES.filter(r=>r.t==='town'&&!used.has(r.id)&&S.pool.includes(r.id))),...shuffle(ROLES.filter(r=>r.t==='town'&&!used.has(r.id)&&!S.pool.includes(r.id)))];
-  S.players.forEach(p=>{if(p.role==='borracho'){const r=spare.shift()||shuffle(ROLES.filter(x=>x.t==='town'))[0];p.shown=r.id;used.add(r.id)}});
-  const bf=r=>(r.t==='town'||r.t==='out')&&!used.has(r.id);
-  S.bluffs=[...shuffle(ROLES.filter(r=>bf(r)&&S.pool.includes(r.id))),...shuffle(ROLES.filter(r=>bf(r)&&!S.pool.includes(r.id)))].slice(0,3).map(r=>r.id);
+  const spare=shuffle(ROLES.filter(r=>r.t==='town'&&!used.has(r.id)&&S.pool.includes(r.id)));
+  S.players.forEach(p=>{if(p.role==='borracho'){const r=spare.shift();p.shown=r.id;used.add(r.id)}});
+  /* Faroles solo entre los personajes marcados: uno de fuera saldría como «no entra» en el libro */
+  S.bluffs=shuffle(ROLES.filter(r=>(r.t==='town'||r.t==='out')&&!used.has(r.id)&&S.pool.includes(r.id))).slice(0,3).map(r=>r.id);
   Object.assign(S,{started:true,gid:newGid(),exec:null,log:[],day:1,night:true,done:{},noms:[],nomd:[],nomr:[],block:null,tab:'grim'});
   U.sheet=null;U.voting=null;U.votes=[];U.gqr=true;U.nres={};U.ninfo={};U.nfake={};
-  commit();toast('Roles repartidos. Enseña el QR de la partida');
+  commit();toast(S.bluffs.length<3?'Roles repartidos, pero solo hay '+S.bluffs.length+' farol'+(S.bluffs.length===1?'':'es')+' para el Demonio: marca más personajes buenos la próxima vez':'Roles repartidos. Enseña el QR de la partida');
 }
 function resetGame(){
   S.started=false;S.gid=null;S.exec=null;S.log=[];S.day=1;S.night=true;S.done={};S.noms=[];S.nomd=[];S.nomr=[];S.block=null;S.bluffs=[];S.tab='setup';
@@ -1142,7 +1149,7 @@ const C={
   pname:(d,el)=>{const p=P(U.sheet);if(p&&el.value.trim()){p.name=el.value.trim();commit()}},
   prole:(d,el)=>{const p=P(U.sheet);p.role=el.value||null;
     if(p.role!=='borracho')p.shown=null;
-    else if(!p.shown){const used=new Set(S.players.map(q=>q.role));const c=shuffle(ROLES.filter(r=>r.t==='town'&&!used.has(r.id)))[0];if(c)p.shown=c.id}
+    else if(!p.shown){const used=new Set(S.players.map(q=>q.role)),free=ROLES.filter(r=>r.t==='town'&&!used.has(r.id)),c=shuffle(free.filter(r=>S.pool.includes(r.id)))[0]||shuffle(free)[0];if(c)p.shown=c.id}
     commit()},
   pshown:(d,el)=>{const p=P(U.sheet);p.shown=el.value||null;commit()},
   pnote:(d,el)=>{const p=P(U.sheet);p.note=el.value;save()}
