@@ -254,6 +254,12 @@ textarea{min-height:64px;resize:vertical}
 .ftag{display:inline-block;font-family:var(--label);font-size:12px;letter-spacing:.06em;padding:1px 8px;border-radius:999px;background:#5b4a8a;color:var(--bone);vertical-align:middle}
 .nres.fake,.hev.fake{border-color:#8f7ad1;background:rgba(124,98,200,.12)}
 .hfx{margin-top:6px;padding-top:6px;border-top:1px dashed var(--line);font-size:15px}
+.spyv{width:min(100%,560px);display:flex;flex-direction:column;gap:10px}
+.spyv .ring{margin:0 auto 22px;background:var(--ink);border-radius:50%}
+.spyl{display:flex;flex-direction:column;gap:6px}
+.spyr{background:var(--ink2);border:1px solid var(--line);border-left:4px solid var(--tc);border-radius:10px;padding:7px 10px;font-size:16px}
+.spyr.dead{opacity:.6}
+.spyr .chips{margin-top:4px}
 .hev{border:1px solid var(--line);border-left:4px solid #9d8cd6;border-radius:10px;padding:9px 12px;background:var(--ink2);font-size:17px}
 .hev.pub{border-left-color:var(--ember)}
 .nrow{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--ink2)}
@@ -345,7 +351,7 @@ const phelp=hbox;
 const HTAB={
  setup:['Cómo preparar la partida',`<ol><li><b>Jugadores:</b> añádelos en el orden en que se sientan, en círculo.</li><li><b>Personajes recomendados:</b> te dice cuántos de cada bando salen con tu número de jugadores y cuántos conviene marcar. Si dudas, aplica la selección recomendada.</li><li><b>La Noche de las Ánimas:</b> marca o desmarca a mano qué personajes pueden salir.</li><li><b>Ajustes de partida:</b> decide qué ven los jugadores en su móvil.</li><li><b>Repartir:</b> se asignan los roles al azar y aparece el QR de la partida para que cada uno vea su carta.</li></ol>`],
  grim:['Cómo usar el grimorio',`<p>Es tu tablero secreto: la mesa vista desde arriba, con el personaje de cada jugador.</p><ul><li>Toca una ficha para cambiar su personaje, marcarlo muerto, poner recordatorios (Envenenado, Protegido…) o escribir notas.</li><li>El color del borde es su bando. El punto blanco es su voto fantasma. 🎭 indica que cree ser otro personaje (el Borracho).</li><li><b>Ocultar</b>, arriba, tapa los personajes si alguien puede ver tu pantalla.</li><li>El <b>Diario del Narrador</b>, abajo, recoge todo lo que has mostrado a cada jugador.</li></ul>`],
- night:['Cómo llevar la noche',`<p>Los pasos salen en el orden en que se despierta cada personaje en juego. Ve de arriba abajo.</p><ul><li>Los botones de cada paso son atajos: eligen jugadores, ponen y quitan fichas, calculan la respuesta y enseñan cartas en grande.</li><li>Al usar un atajo o pulsar <b>Marcar</b>, el paso queda hecho y lo que le has mostrado se apunta en el <b>Diario del Narrador</b> (en el Grimorio).</li><li>⚠ avisa si quien despierta es el Borracho o está envenenado: puedes darle información falsa. Elige lo que le dices en <b>Le has dicho</b> o pulsa <b>🎭 Dar información falsa</b>; quedará marcada como falsa en tu diario.</li><li>Al final, <b>Aplicar muertes</b> mata a quien tenga «Muere esta noche».</li></ul>`],
+ night:['Cómo llevar la noche',`<p>Los pasos salen en el orden en que se despierta cada personaje en juego. Ve de arriba abajo.</p><ul><li>Los botones de cada paso son atajos: eligen jugadores, ponen y quitan fichas, calculan la respuesta y enseñan cartas en grande.</li><li>Al usar un atajo o pulsar <b>Marcar</b>, el paso queda hecho y lo que le has mostrado se apunta en el <b>Diario del Narrador</b> (en el Grimorio).</li><li>Solo puedes dar información falsa si quien despierta es el Borracho o está envenenado, o si hay un Espía o un Eremita implicado (pueden aparecer como otra cosa). Solo entonces salen las opciones para mentir. Elige lo que le dices en <b>Le has dicho</b> o pulsa <b>🎭 Dar información falsa</b>; quedará marcada como falsa en tu diario.</li><li>Al final, <b>Aplicar muertes</b> mata a quien tenga «Muere esta noche».</li></ul>`],
  day:['Cómo llevar el día',`<ul><li><b>Cuenta atrás:</b> para el debate. La duración por defecto se cambia en Ajustes de partida.</li><li><b>Nominar:</b> elige quién nomina y a quién, y abre la votación. Ve marcando quién levanta la mano, en sentido horario.</li><li>Si alcanza la mitad de los vivos, va a la hoguera. Si otro le supera después, le sustituye; si empatan, no queda nadie.</li><li>Antes de anochecer, <b>Ejecutar</b> a quien esté en la hoguera.</li></ul>`],
  cards:['Para qué sirve esta pestaña',`<ul><li><b>QR de la partida:</b> un solo QR para toda la mesa. Cada jugador lo escanea, elige su nombre y ve su carta. Vuelve a enseñarlo si cambias algún rol o asiento.</li><li><b>Libro de personajes:</b> la lista de personajes que pueden salir, con un resumen de reglas.</li><li><b>Dirección de la web:</b> la dirección pública que abren los móviles. Normalmente no hace falta tocarla.</li></ul>`]
 };
@@ -550,15 +556,22 @@ function narrLog(){
 }
 function vGrim(){
   const n=S.players.length;if(!n)return `<div class="panel empty">No hay jugadores. Añádelos en Preparar.</div>`;
-  const sz=Math.min(19,215/Math.max(n,5)),R0=37;
-  const toks=S.players.map((p,i)=>{
+  const toks=grimToks(false);
+  const v=verdict();
+  return vGrimBody(toks,v);
+}
+function grimToks(all){
+  const n=S.players.length,sz=Math.min(19,215/Math.max(n,5)),R0=37,hide=S.hide&&!all;
+  return S.players.map((p,i)=>{
     const a=-Math.PI/2+i*2*Math.PI/n,x=50+R0*Math.cos(a),y=50+R0*Math.sin(a);
     const r=p.role?R[p.role]:null,tm=r?r.t:null;
-    const glyph=S.hide?'☾':(r?r.i:'?');
-    const tc=S.hide||!tm?'var(--dim)':`var(--${tm})`;
+    const glyph=hide?'☾':(r?r.i:'?');
+    const tc=hide||!tm?'var(--dim)':`var(--${tm})`;
+    if(all)return `<div class="tok ${p.alive?'':'dead'}" style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%;--sz:${sz.toFixed(2)};--tc:${tc}"><span class="medal">${glyph}${!p.alive&&p.ghost?'<i class="pip"></i>':''}${p.rem.length?`<span class="bdg">${p.rem.length}</span>`:''}${p.shown?'<span class="mask">🎭</span>':''}</span><span class="tname">${esc(p.name)}</span></div>`;
     return `<button class="tok ${p.alive?'':'dead'}" style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%;--sz:${sz.toFixed(2)};--tc:${tc}" data-act="sheet" data-id="${p.id}" aria-label="${esc(p.name)}${r&&!S.hide?', '+esc(r.n):''}${p.alive?'':', muerto'}"><span class="medal">${glyph}${!p.alive&&p.ghost?'<i class="pip" title="Conserva su voto fantasma"></i>':''}${p.rem.length&&!S.hide?`<span class="bdg">${p.rem.length}</span>`:''}${!S.hide&&p.shown?'<span class="mask">🎭</span>':''}</span><span class="tname">${esc(p.name)}</span></button>`;
   }).join('');
-  const v=verdict();
+}
+function vGrimBody(toks,v){
   return `<div class="wrap">
    ${v?`<div class="verdict" role="status">${esc(v)}</div>`:''}
    <div class="ring ${S.hide?'veil':''}">${ringSVG()}${toks}<div class="core"><div class="moon">${S.night?'🌕':'🎃'}</div><div class="ph">${S.started?(S.night?'Noche ':'Día ')+S.day:'Sin repartir'}</div><div class="st">${aliveN()} vivos · hacen falta ${thr()} votos</div>${S.hide?'<div class="veiltag">◉ Roles ocultos</div>':''}</div></div>
@@ -641,6 +654,17 @@ function genInfo(id){
   const a=shuffle(c)[0],b=shuffle(S.players.filter(p=>p.id!==a.id&&!hs.includes(p.id)))[0];
   return {r:a.role,ids:shuffle([a,b].filter(Boolean)).map(p=>p.id)};
 }
+/* Solo se puede mentir si quien recibe la información es el Borracho o está envenenado,
+   o si hay un Espía o un Eremita implicado (pueden registrarse como otra cosa). */
+function lieWhy(sid,inv){
+  const hs=holdersOf(sid).filter(p=>p.alive||sid==='murcielago');
+  if(hs.some(p=>p.shown===sid&&p.role!==sid))return 'es el Borracho';
+  if(hs.some(p=>p.rem.includes('Envenenado')))return 'está envenenado';
+  const odd=(inv||[]).filter(p=>p&&(p.role==='espia'||p.role==='eremita'));
+  return odd.length?odd.map(p=>esc(p.name)+' ('+(p.role==='espia'?'Espía':'Eremita')+')').join(', ')+' puede registrarse como otra cosa':'';
+}
+const infoInv=sid=>S.players.filter(p=>p.alive&&p.role===(sid==='detective'?'eremita':'espia'));
+const ids2p=a=>a.filter(v=>v&&v.p!=null).map(v=>P(v.p));
 function nightTools(s){
   const pb=(k,l)=>`<button class="btn sm" data-act="npick" data-k="${k}">${l}</button>`;
   const sb=(k,l,extra='')=>`<button class="btn sm" data-act="nshow" data-k="${k}" ${extra}>${l}</button>`;
@@ -655,7 +679,10 @@ function nightTools(s){
     case 'guardiana':b=pb('guardiana','🧂 Elegir protegido');break;
     case 'calabaza':b=pb('calabaza','🎃 Elegir víctima');break;
     case 'jinete':b=pb('jinete','🐴 Elegir maldito');break;
-    case 'vidente':b=pb('vidente','🔮 Elegir 2 jugadores')+(S.players.some(p=>p.rem.includes('Falsa pista'))?'':pb('vidente_fp','Poner falsa pista'));break;
+    case 'vidente':{
+      const fp=S.players.find(p=>p.rem.includes('Falsa pista'));
+      b=fp?`<span class="sub">Falsa pista: <b>${esc(fp.name)}</b>.</span>`+pb('vidente','🔮 Elegir 2 jugadores'):pb('vidente_fp','🎯 Poner falsa pista')+`<button class="btn sm" disabled title="Primero pon la falsa pista">🔮 Elegir 2 jugadores</button><span class="sub" style="font-size:13px">Primero elige la falsa pista: un jugador bueno que a la Vidente le aparecerá como Demonio.</span>`;
+      break}
     case 'costurera':b=U.nres.costurera?'':s.holders.some(p=>p.rem.includes('Habilidad usada'))?'<span class="sub">Ya usó su habilidad: no la despiertes.</span>':pb('costurera','🧵 Elegir 2 jugadores');break;
     case 'murcielago':b=s.holders.some(p=>p.rem.includes('Muere esta noche'))?pb('murcielago','🦇 Elegir jugador'):'<span class="sub">No muere esta noche: no lo despiertes.</span>';break;
     case 'farolero':{
@@ -665,20 +692,21 @@ function nightTools(s){
         const {nb,n}=fi;
         const odd=nb.filter(q=>q.role==='espia'||q.role==='eremita');
         return `🏮 Vecinos de ${esc(p.name)}: ${names(nb)} → <span class="big2">${n}</span> ${n===1?'dedo':'dedos'}.${odd.length?` <span class="nwarn">${names(odd)} puede registrarse distinto (Espía/Eremita): decides tú.</span>`:''}`});
-      const lg=logGet('farolero');
-      b=`<div class="nres">${out.join('<br>')}</div>`+(out.length?`<div class="row"><span class="sub">Le has enseñado:</span>${[0,1,2].map(v=>`<button class="chipb" data-act="nfaro" data-v="${v}" aria-pressed="${!!lg&&lg.a[0]===v}">${v}</button>`).join('')}${lg&&isFalse(lg)?'<span class="ftag">🎭 Información falsa</span>':''}</div>`:'');break}
+      const lg=logGet('farolero'),fh=s.holders.find(p=>p.alive),ff=fh&&faroInfo(fh),why=ff?lieWhy('farolero',ff.nb):'';
+      b=`<div class="nres">${out.join('<br>')}</div>`+(out.length&&(why||(lg&&isFalse(lg)))?`<div class="row"><span class="sub">Le has enseñado:</span>${[0,1,2].map(v=>`<button class="chipb" data-act="nfaro" data-v="${v}" aria-pressed="${!!lg&&lg.a[0]===v}">${v}</button>`).join('')}${lg&&isFalse(lg)?'<span class="ftag">🎭 Información falsa</span>':''}${why?`<span class="sub" style="font-size:13px">Puedes mentir: ${why}.</span>`:''}</div>`:'');break}
     case 'sepulturero':{
       const e=S.exec&&S.exec.day===S.day-1?P(S.exec.id):null;
       b=e?`<span>Hoy fue ejecutado <b>${esc(e.name)}</b>.</span>`+sb('exec','⚰️ Enseñar su ficha'):'<span class="sub">Hoy no hubo ejecución registrada: no lo despiertes.</span>';break}
     case 'bibliotecaria':case 'cronista':case 'detective':{
-      const inf=U.ninfo[s.id];
-      if(!inf)b=`<button class="btn sm" data-act="ninfo" data-id="${s.id}">✨ Generar información</button><button class="btn sm" data-act="nfake" data-id="${s.id}">🎭 Dar información falsa</button>`;
-      else if(inf.none&&!U.nfake[s.id])b=`<div class="nres">No hay ${s.id==='bibliotecaria'?'Marginados':'personajes de ese tipo'} en juego: haz el gesto de cero.</div><button class="btn sm" data-act="ninfo" data-id="${s.id}">↻ Repetir</button><button class="btn sm" data-act="nfake" data-id="${s.id}">🎭 Dar información falsa</button>`;
+      const inf=U.ninfo[s.id],why=lieWhy(s.id,infoInv(s.id));
+      const fb=why?`<button class="btn sm" data-act="nfake" data-id="${s.id}" title="Puedes mentir: ${why}">🎭 Dar información falsa</button>`:'';
+      if(!inf)b=`<button class="btn sm" data-act="ninfo" data-id="${s.id}">✨ Generar información</button>${fb}`;
+      else if(inf.none&&!U.nfake[s.id])b=`<div class="nres">No hay ${s.id==='bibliotecaria'?'Marginados':'personajes de ese tipo'} en juego: haz el gesto de cero.</div><button class="btn sm" data-act="ninfo" data-id="${s.id}">↻ Repetir</button>${fb}`;
       else if(inf.none){const fk=U.nfake[s.id];b=`<div class="nres fake"><span class="ftag">🎭 Información falsa</span> Ficha ${R[fk.r].i} <b>${esc(R[fk.r].n)}</b> · señala a ${names(fk.ids.map(P))}.<br><span class="sub">La verdad: no hay ninguno en juego.</span></div><div class="row">${sb('info','🃏 Enseñar ficha',`data-id="${s.id}"`)}<button class="btn sm" data-act="nfake" data-id="${s.id}">↻ Otra falsa</button><button class="btn sm" data-act="ntrue" data-id="${s.id}">✓ Dar la verdadera</button></div>`}
       else{const fk=U.nfake[s.id],sh=fk||inf;
-        b=`<div class="nres ${fk?'fake':''}">${fk?'<span class="ftag">🎭 Información falsa</span> ':''}Ficha ${R[sh.r].i} <b>${esc(R[sh.r].n)}</b> · señala a ${names(sh.ids.map(P))}.${fk?`<br><span class="sub">La verdadera era: ${R[inf.r].i} ${esc(R[inf.r].n)} · ${names(inf.ids.map(P))}.</span>`:''}</div><div class="row">${sb('info','🃏 Enseñar ficha',`data-id="${s.id}"`)}${fk?`<button class="btn sm" data-act="nfake" data-id="${s.id}">↻ Otra falsa</button><button class="btn sm" data-act="ntrue" data-id="${s.id}">✓ Dar la verdadera</button>`:`<button class="btn sm" data-act="ninfo" data-id="${s.id}">↻ Otra opción</button><button class="btn sm" data-act="nfake" data-id="${s.id}">🎭 Dar información falsa</button>`}</div>`}
+        b=`<div class="nres ${fk?'fake':''}">${fk?'<span class="ftag">🎭 Información falsa</span> ':''}Ficha ${R[sh.r].i} <b>${esc(R[sh.r].n)}</b> · señala a ${names(sh.ids.map(P))}.${fk?`<br><span class="sub">La verdadera era: ${R[inf.r].i} ${esc(R[inf.r].n)} · ${names(inf.ids.map(P))}.</span>`:''}</div><div class="row">${sb('info','🃏 Enseñar ficha',`data-id="${s.id}"`)}${fk?`<button class="btn sm" data-act="nfake" data-id="${s.id}">↻ Otra falsa</button><button class="btn sm" data-act="ntrue" data-id="${s.id}">✓ Dar la verdadera</button>`:`<button class="btn sm" data-act="ninfo" data-id="${s.id}">↻ Otra opción</button>${fb}`}</div>`}
       break}
-    case 'espia':b=`<button class="btn sm" data-act="tab" data-k="grim">❂ Abrir grimorio para enseñárselo</button>`;break;
+    case 'espia':b=sb('spy','🕷️ Enseñar el grimorio al Espía');break;
     case 'minfo':b=sb('demon','🩸 Enseñar quién es el Demonio');break;
     case 'dinfo':b=sb('minions','🕸️ Enseñar sus Esbirros')+sb('bluffs','🃏 Enseñar los 3 faroles');break;
     case 'dawn':{
@@ -687,8 +715,9 @@ function nightTools(s){
   }
   let res=U.nres[s.id];
   const lg=logGet(s.id);
-  if(lg&&(lg.k==='v'||lg.k==='c'))res=(res||'')+`<div class="row" style="margin-top:6px"><span class="sub">Le has dicho:</span>${[1,0].map(v=>`<button class="chipb" data-act="nans" data-s="${s.id}" data-v="${v}" aria-pressed="${lg.a[2]===v}">${v?'SÍ':'NO'}</button>`).join('')}${isFalse(lg)?'<span class="ftag">🎭 Información falsa</span>':''}</div>`;
-  if(lg&&(lg.k==='s'||lg.k==='b'))res=(res||'')+`<div class="row" style="margin-top:6px"><label class="sub" for="nr-${s.id}">Ficha que le enseñaste:</label><select id="nr-${s.id}" class="nsel" data-chg="nrole" data-s="${s.id}">${ROLES.map(r=>`<option value="${r.id}" ${lg.a[1].r===r.id?'selected':''}>${r.i} ${esc(r.n)}</option>`).join('')}</select>${isFalse(lg)?'<span class="ftag">🎭 Información falsa</span>':''}</div>`;
+  const why=lg?lieWhy(s.id,ids2p(lg.t)):'';
+  if(lg&&(lg.k==='v'||lg.k==='c')&&(why||isFalse(lg)))res=(res||'')+`<div class="row" style="margin-top:6px"><span class="sub">Le has dicho:</span>${[1,0].map(v=>`<button class="chipb" data-act="nans" data-s="${s.id}" data-v="${v}" aria-pressed="${lg.a[2]===v}">${v?'SÍ':'NO'}</button>`).join('')}${isFalse(lg)?'<span class="ftag">🎭 Información falsa</span>':''}${why?`<span class="sub" style="font-size:13px">Puedes mentir: ${why}.</span>`:''}</div>`;
+  if(lg&&(lg.k==='s'||lg.k==='b')&&(why||isFalse(lg)))res=(res||'')+`<div class="row" style="margin-top:6px"><label class="sub" for="nr-${s.id}">Ficha que le enseñaste:</label><select id="nr-${s.id}" class="nsel" data-chg="nrole" data-s="${s.id}">${ROLES.map(r=>`<option value="${r.id}" ${lg.a[1].r===r.id?'selected':''}>${r.i} ${esc(r.n)}</option>`).join('')}</select>${isFalse(lg)?'<span class="ftag">🎭 Información falsa</span>':''}</div>`;
   if(!b&&!warn&&!res)return '';
   return `<div class="ntools">${warn}${b?`<div class="row">${b}</div>`:''}${res?`<div class="nres">${res}</div>`:''}</div>`;
 }
@@ -983,7 +1012,7 @@ function overlays(){
     if(p){
       h+=`<div class="overlay center" role="dialog" aria-modal="true" aria-label="Tarjeta de ${esc(p.name)}"><div class="bd"></div>`;
       if(U.stage===0)h+=`<div class="cover"><div class="ph flame">🕯️</div><h2>Pasa el móvil a ${esc(p.name)}</h2><p class="sub">Que nadie más mire la pantalla.</p><button class="btn primary block" data-act="reveal">Soy ${esc(p.name)}: ver mi rol</button><button class="btn" data-act="closecard">Cancelar</button></div>`;
-      else h+=`<div class="cardwrap">${cardHTML(p)}<button class="btn primary block" style="max-width:360px" data-act="hidecard">Ocultar y devolver el móvil</button></div>`;
+      else h+=`<div class="cardwrap">${cardHTML(p)}<button class="btn primary block" style="max-width:360px" data-act="hidecard">Cerrar</button></div>`;
       h+=`</div>`;
     }
   }
@@ -1018,6 +1047,8 @@ function overlays(){
     if(v.k==='role')c=`<div class="showhd">${esc(v.x||'')}</div>${tokenCard(v.r)}`;
     if(v.k==='bluffs')c=`<div class="showhd">ESTOS PERSONAJES NO ESTÁN EN JUEGO</div>${S.bluffs.map(id=>tokenCard(id,true)).join('')}`;
     if(v.k==='demon')c=`<div class="cover"><div class="lbl">ESTE ES EL DEMONIO</div><h2 style="font-size:40px;color:var(--dem)">${names(dems)}</h2>${mins.length>1?`<p class="sub">Esbirros: ${names(mins)}</p>`:''}</div>`;
+    if(v.k==='spy')c=`<div class="spyv"><div class="showhd">GRIMORIO DEL NARRADOR · NOCHE ${S.day}</div><div class="ring">${ringSVG()}${grimToks(true)}<div class="core"><div class="moon">🌕</div><div class="ph">Noche ${S.day}</div><div class="st">${aliveN()} vivos</div></div></div>
+      <div class="spyl">${S.players.map(p=>{const r=R[p.role],sh=p.shown&&R[p.shown];return `<div class="spyr ${p.alive?'':'dead'}" style="--tc:var(--${r?r.t:'line'})"><b>${esc(p.name)}</b> ${r?r.i+' '+esc(r.n):'—'}${sh?` <span class="sub">(cree ser ${sh.i} ${esc(sh.n)})</span>`:''}${p.alive?'':' <span class="sub">† muerto</span>'}${p.rem.length?`<div class="chips">${p.rem.map(x=>`<span class="rchip" style="--tc:var(--ember)">${esc(x)}</span>`).join('')}</div>`:''}</div>`}).join('')}</div></div>`;
     if(v.k==='minions')c=`<div class="cover"><div class="lbl">ESTOS SON TUS ESBIRROS</div><h2 style="font-size:40px;color:var(--min)">${names(mins)}</h2></div>`;
     h+=`<div class="overlay center" role="dialog" aria-modal="true"><div class="bd" data-act="nclose"></div><div class="cardwrap">${c}<button class="btn primary block" style="max-width:360px" data-act="nclose">Cerrar</button></div></div>`;
   }
@@ -1061,7 +1092,7 @@ const A={
   chip:(d)=>{const p=P(d.id),i=p.rem.indexOf(d.c);if(i>=0)p.rem.splice(i,1);else p.rem.push(d.c);commit()},
   phase:()=>phase(),
   done:(d)=>{S.done[d.id]=!S.done[d.id];if(S.done[d.id])autoLog(d.id);commit()},
-  showcard:(d)=>{U.card=+d.id;U.stage=0;U.sheet=null;U.gqr=false;render()},
+  showcard:(d)=>{U.card=+d.id;U.stage=1;U.sheet=null;U.gqr=false;render()},
   gameqr:()=>{U.gqr=true;U.sheet=null;U.card=null;render()},
   bookqr:()=>{U.bqr=true;render()},
   closebqr:()=>{U.bqr=false;render()},
@@ -1096,7 +1127,7 @@ const A={
   nshow:(d)=>{
     if(d.k==='info'){const inf=U.nfake[d.id]||U.ninfo[d.id];U.show={k:'role',r:inf.r,x:'Uno de estos es este personaje: '+inf.ids.map(i=>P(i).name).join(' o ')};S.done[d.id]=true;autoLog(d.id)}
     else if(d.k==='exec'){const e=P(S.exec.id),lg=logGet('sepulturero');U.show={k:'role',r:lg?lg.a[1].r:e.role,x:'Hoy fue ejecutado este personaje'};S.done.sepulturero=true;autoLog('sepulturero')}
-    else{U.show={k:d.k};const st=d.k==='demon'?'minfo':'dinfo';S.done[st]=true;autoLog(st)}
+    else{U.show={k:d.k};const st=d.k==='demon'?'minfo':d.k==='spy'?'espia':'dinfo';S.done[st]=true;autoLog(st)}
     commit()},
   nfaro:(d)=>{autoLog('farolero');const e=logGet('farolero');if(e)e.a[0]=+d.v;S.done.farolero=true;commit()},
   nans:(d)=>{const e=logGet(d.s);if(e){e.a[2]=+d.v;commit()}},
