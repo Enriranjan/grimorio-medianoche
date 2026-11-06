@@ -79,6 +79,9 @@ function crearServidor(op={}){
 
   const leerCookie=req=>{const m=new RegExp('(?:^|;\\s*)'+COOKIE+'=([^;]+)').exec(req.headers.cookie||'');return m?decodeURIComponent(m[1]):null};
   const esHttps=req=>req.headers['x-forwarded-proto']==='https'||!!req.socket.encrypted;
+  /* Subruta bajo la que nos sirve el proxy (X-Forwarded-Prefix, p. ej. /juegos/grimorio): la cookie del
+     director se limita a ella. Sin cabecera o si no es una ruta limpia, se usa "/". */
+  const rutaCookie=req=>{const p=String(req.headers['x-forwarded-prefix']||'').replace(/\/+$/,'');return /^(\/[A-Za-z0-9._~-]+){1,8}$/.test(p)?p+'/':'/'};
   const mismoOrigen=req=>{const o=req.headers.origin;if(!o)return true;try{return new URL(o).host===req.headers.host}catch(e){return false}};
 
   app.post('/api/entrar',async(req,reply)=>{
@@ -91,13 +94,15 @@ function crearServidor(op={}){
     if(!ok){fallo(ip);app.log.warn({ip},'PIN incorrecto');return reply.code(401).send({error:'PIN incorrecto'})}
     fallos.delete(ip);
     const t=estado.nuevaSesion();
-    reply.header('Set-Cookie',`${COOKIE}=${t}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${30*86400}${esHttps(req)?'; Secure':''}`);
+    reply.header('Set-Cookie',`${COOKIE}=${t}; Path=${rutaCookie(req)}; HttpOnly; SameSite=Strict; Max-Age=${30*86400}${esHttps(req)?'; Secure':''}`);
     return {ok:true};
   });
   app.post('/api/salir',async(req,reply)=>{
     if(!mismoOrigen(req))return reply.code(403).send({error:'Origen no permitido'});
     estado.cerrarSesion(leerCookie(req));
-    reply.header('Set-Cookie',`${COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0`);
+    /* Se borra en su ruta y también en "/" (cookies de antes de usar la subruta) */
+    const borrar=r=>`${COOKIE}=; Path=${r}; HttpOnly; SameSite=Strict; Max-Age=0`;
+    reply.header('Set-Cookie',[...new Set([rutaCookie(req),'/'])].map(borrar));
     return {ok:true};
   });
   app.get('/api/sesion',async(req)=>({director:estado.sesionValida(leerCookie(req))}));

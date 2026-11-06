@@ -57,7 +57,7 @@ La app no sabe bajo qué prefijo está: funciona igual en `http://192.168.1.2/gr
 ### Seguridad
 - PIN: se compara en tiempo constante. 5 fallos en 10 minutos desde la misma IP la bloquean 10 minutos (respuesta 429).
 - IP real: detrás de Caddy se usa la IP que ve Caddy (`X-Forwarded-For`). `CF-Connecting-IP` solo cuenta si la petición llega desde el túnel (`IPS_TUNEL`); si la manda un móvil de la LAN o de Tailscale, se ignora.
-- Sesión del director: cookie `HttpOnly`, `SameSite=Strict` (y `Secure` si llega por HTTPS). Los WebSocket comprueban `Origin`.
+- Sesión del director: cookie `HttpOnly`, `SameSite=Strict` (y `Secure` si llega por HTTPS), con `Path` igual a la subruta que indique el proxy en `X-Forwarded-Prefix` (p. ej. `/juegos/grimorio/`; sin cabecera, `/`). Los WebSocket comprueban `Origin`.
 - Cabeceras: CSP sin scripts en línea (salvo en `/clasico/`), `X-Frame-Options: DENY`, `nosniff`.
 - Solo se sirven los archivos de una lista cerrada: nunca `server/`, `datos/`, `package.json` ni `.git`.
 
@@ -93,7 +93,7 @@ journalctl -u grimorio -f
 sudo systemctl stop grimorio && sudo rm /var/lib/grimorio/estado.json && sudo systemctl start grimorio
 ```
 
-Para moverlo a un subdominio con HTTPS (por ejemplo, con Cloudflare Tunnel): apunta el túnel a Caddy o a `127.0.0.1:8002`, pon `URL_JUGADORES=https://tu-subdominio/jugar` y reinicia el servicio.
+En internet se publica con Cloudflare Tunnel en **https://enriranjan.dev/juegos/grimorio/** (`URL_JUGADORES=https://enriranjan.dev/juegos/grimorio/jugar`). Caddy quita la subruta y envía `X-Forwarded-Prefix: /juegos/grimorio`. El antiguo `grimorio.enriranjan.dev` redirige (301) a la subruta, conservando la ruta. Para servirlo bajo otra ruta o dominio no hay que tocar código: solo el proxy y `URL_JUGADORES`.
 
 ---
 Proyecto de aficionados con personajes originales, inspirado en la mecánica de Blood on the Clocktower. No está afiliado a The Pandemonium Institute.

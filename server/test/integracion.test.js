@@ -297,3 +297,15 @@ test('Cambiar el PIN cierra todas las sesiones del director',async()=>{
   dir1=await director(ok.cookie);
   assert.ok(!JSON.stringify(dir1.ultima('estado')).includes('"sal"'),'la huella del PIN no se envía');
 });
+
+test('Cookie del director limitada a la subruta del proxy (X-Forwarded-Prefix)',async()=>{
+  const r=await fetch(base+'/api/entrar',{method:'POST',headers:{'content-type':'application/json',origin:base,'x-forwarded-prefix':'/juegos/grimorio','x-forwarded-proto':'https'},body:JSON.stringify({pin:'OtroPin2026x'})});
+  const c=r.headers.get('set-cookie');
+  assert.match(c,/Path=\/juegos\/grimorio\/;/);assert.match(c,/HttpOnly/);assert.match(c,/; Secure/);assert.match(c,/SameSite=Strict/);
+  const raiz=(await login('OtroPin2026x')).cookie;void raiz;
+  const r2=await fetch(base+'/api/entrar',{method:'POST',headers:{'content-type':'application/json',origin:base,'x-forwarded-prefix':'/../x;Path=/'},body:JSON.stringify({pin:'OtroPin2026x'})});
+  assert.match(r2.headers.get('set-cookie'),/Path=\/;/,'un prefijo raro no se usa');
+  const s=await fetch(base+'/api/salir',{method:'POST',headers:{origin:base,'x-forwarded-prefix':'/juegos/grimorio'}});
+  const sc=s.headers.getSetCookie();
+  assert.deepEqual(sc.map(x=>/Path=([^;]+)/.exec(x)[1]).sort(),['/','/juegos/grimorio/']);
+});
