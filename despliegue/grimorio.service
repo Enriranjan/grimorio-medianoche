@@ -1,0 +1,32 @@
+[Unit]
+Description=Grimorio de Medianoche (versión dinámica)
+After=network.target
+
+[Service]
+Type=simple
+User=raspberry
+Group=raspberry
+WorkingDirectory=/opt/grimorio
+# PIN, puerto y demás ajustes: /etc/grimorio.env (ver despliegue/grimorio.env.ejemplo)
+Environment=HOST=127.0.0.1 PORT=8002 DATA_DIR=/var/lib/grimorio NODE_ENV=production
+EnvironmentFile=/etc/grimorio.env
+ExecStart=/usr/bin/node server/servidor.js
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=10
+# Estado en /var/lib/grimorio (lo crea systemd con dueño raspberry)
+StateDirectory=grimorio
+StateDirectoryMode=0700
+# Endurecimiento
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=200M
+
+[Install]
+WantedBy=multi-user.target

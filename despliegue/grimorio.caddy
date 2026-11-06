@@ -1,0 +1,8 @@
+# titulo: Grimorio de Medianoche
+# tipo: app
+# destino: 127.0.0.1:8002
+# Abierta también a la red local (192.168.1.0/24): ver el filtro @fuera en /etc/caddy/Caddyfile.
+redir /grimorio /grimorio/
+handle_path /grimorio/* {
+	reverse_proxy 127.0.0.1:8002
+}
