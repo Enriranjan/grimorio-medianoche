@@ -113,8 +113,10 @@ function crearServidor(op={}){
   app.server.on('upgrade',(req,socket,head)=>{
     const p=(req.url||'').split('?')[0];
     const rol=p==='/ws/director'?'director':p==='/ws/jugar'?'jugador':null;
-    if(!rol||!mismoOrigen(req)){socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');return socket.destroy()}
-    if(rol==='director'&&!estado.sesionValida(leerCookie(req))){socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');return socket.destroy()}
+    /* Respuesta HTTP completa (con Content-Length) para que los proxies (Caddy, cloudflared) la reenvíen tal cual y no den 502 */
+    const rechazar=(codigo,texto)=>socket.end(`HTTP/1.1 ${codigo} ${texto}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n`);
+    if(!rol||!mismoOrigen(req))return rechazar(403,'Forbidden');
+    if(rol==='director'&&!estado.sesionValida(leerCookie(req)))return rechazar(401,'Unauthorized');
     wss.handleUpgrade(req,socket,head,ws=>{ws.rol=rol;ws.sesion=leerCookie(req);ws.vivo=true;wss.emit('connection',ws,req)});
   });
 
