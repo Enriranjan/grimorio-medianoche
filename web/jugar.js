@@ -71,7 +71,8 @@ function renderJoin(){
   const st=shell(`<div class="pvtop"><div class="lbl">${esc(G.nombre)}</div></div>
    <h1 class="pvh">Únete a la mesa</h1>
    <p class="sub" style="text-align:center;margin:0">Escribe tu nombre para sentarte. Este móvil te recordará: si recargas o pierdes la conexión, volverás a tu sitio.</p>
-   <form id="fjoin" class="login" style="width:100%">
+   ${PUB&&PUB.cerrada?'<div class="panel empty"><h2>🔒 La mesa está cerrada</h2><p>El Narrador ha cerrado la mesa: ya no se puede sentar nadie más. Si te falta sentarte, pídele que la abra.</p></div>':''}
+   <form id="fjoin" class="login" style="width:100%" ${PUB&&PUB.cerrada?'hidden':''}>
     <input type="text" id="jname" maxlength="24" autocomplete="nickname" autocapitalize="words" placeholder="Tu nombre" aria-label="Tu nombre" value="${esc(P.nombre)}" style="letter-spacing:normal">
     <div class="err" role="alert">${esc(P.err)}</div>
     <button class="btn primary block" type="submit" ${P.enviando?'disabled':''}>🕯️ Sentarme a la mesa</button>
@@ -80,7 +81,8 @@ function renderJoin(){
    ${PUB&&PUB.fase==='partida'?'<p class="nwarn" style="text-align:center">Hay una partida en curso: te sentarás sin personaje hasta que el Narrador te dé uno.</p>':''}
    <button class="btn block" data-act="libro">📖 Ver todos los personajes</button>`);
   keep(st);
-  $('#fjoin').addEventListener('submit',e=>{
+  const fj=$('#fjoin');if(!fj||fj.hidden)return;
+  fj.addEventListener('submit',e=>{
     e.preventDefault();
     const v=$('#jname').value.trim();P.nombre=v;
     if(!v){P.err='Escribe tu nombre';renderJoin();return}

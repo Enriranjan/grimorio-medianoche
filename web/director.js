@@ -85,7 +85,7 @@ const EYE='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7
 const EYE_OFF='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
 function header(){
   const lab=S.started?(S.night?'Noche ':'Día ')+S.day:'Preparación';
-  return `<header class="top"><h1>Grimorio de Medianoche</h1><span class="chip ${S.started?(S.night?'night':'dayc'):''}">${S.started?(S.night?'☾ ':'☀ '):''}${lab}</span>${S.started?'<button class="endbtn" data-act="reset" title="Terminar partida">⏹ Terminar</button>':''}<button class="eyebtn" data-act="hide" aria-pressed="${S.hide}" aria-label="${S.hide?'Roles ocultos. Pulsa para mostrarlos':'Ocultar los roles del grimorio'}" title="${S.hide?'Roles ocultos: pulsa para mostrarlos':'Oculta los roles por si alguien mira tu pantalla'}">${S.hide?EYE_OFF:EYE}<span>${S.hide?'Oculto':'Ocultar'}</span></button></header>`;
+  return `<header class="top"><h1>Grimorio de Medianoche</h1><span class="chip ${S.started?(S.night?'night':'dayc'):''}">${S.started?(S.night?'☾ ':'☀ '):''}${lab}</span>${S.mesaCerrada?'<span class="chip" title="Mesa cerrada: nadie más puede sentarse">🔒</span>':''}${S.started?'<button class="endbtn" data-act="reset" title="Terminar partida">⏹ Terminar</button>':''}<button class="eyebtn" data-act="hide" aria-pressed="${S.hide}" aria-label="${S.hide?'Roles ocultos. Pulsa para mostrarlos':'Ocultar los roles del grimorio'}" title="${S.hide?'Roles ocultos: pulsa para mostrarlos':'Oculta los roles por si alguien mira tu pantalla'}">${S.hide?EYE_OFF:EYE}<span>${S.hide?'Oculto':'Ocultar'}</span></button></header>`;
 }
 function nav(){
   const tabs=[['setup','✎','Preparar'],['grim','❂','Grimorio'],['night','☾','Noche'],['day','☀','Día'],['cards','♦','Tarjetas']];
@@ -168,6 +168,7 @@ function vSetup(){
   <section class="panel"><h2>Mesa · ${n} sentado${n===1?'':'s'}</h2><p class="sub">Los jugadores aparecen al unirse desde su móvil, en orden de llegada. Arrastra ⠿ para colocarlos como estáis sentados, en círculo. <span class="conn on"></span> conectado · <span class="conn"></span> sin conexión · <span class="conn nomovil"></span> sin móvil.</p>
    ${n?`<ul class="plist" id="plist">${plist}</ul>`:'<p class="empty">Todavía no se ha sentado nadie. Enseña el QR para unirse.</p>'}
    <div class="row"><input type="text" id="newname" placeholder="Añadir jugador sin móvil" maxlength="24" autocomplete="off" style="flex:1;min-width:140px"><button class="btn" data-act="add">Añadir</button></div>
+   <div class="row" style="margin-top:10px;justify-content:space-between;border-top:1px solid var(--line);padding-top:10px"><span class="sub">${S.mesaCerrada?'🔒 <b>Mesa cerrada:</b> nadie más puede sentarse. Los sentados siguen entrando aunque recarguen.':'🔓 <b>Mesa abierta:</b> cualquiera con el enlace puede sentarse.'}</span><button class="btn sm ${S.mesaCerrada?'':'primary'}" data-act="mesa" aria-pressed="${!!S.mesaCerrada}">${S.mesaCerrada?'Abrir la mesa':'Cerrar la mesa'}</button></div>
    <div class="row" style="margin-top:8px"><button class="btn sm" data-act="shuf" ${n>1?'':'disabled'}>Barajar asientos</button><button class="btn sm danger" data-act="clear" ${n?'':'disabled'}>Vaciar la mesa</button></div>
   </section>
   ${vRec()}
@@ -537,6 +538,7 @@ function overlays(){
       ${svg?`<div class="qrframe">${svg}</div>`:''}<p class="sub">Escanead este código con la cámara del móvil y escribid vuestro nombre. Cuando el Narrador reparta, cada uno verá su carta en secreto.</p>
       <p class="sub" style="font-size:14px;word-break:break-all">${esc(url)}</p>
       <p class="sub" style="font-size:14px">${S.players.length} sentado${S.players.length===1?'':'s'}.</p>
+      ${S.mesaCerrada?'<p class="nwarn">🔒 La mesa está cerrada: nadie nuevo podrá sentarse.</p><button class="btn sm" data-act="mesa">Abrir la mesa</button>':''}
       <div class="row" style="justify-content:center"><button class="btn sm" data-act="copygame">Copiar enlace</button><button class="btn primary" data-act="closegqr">Cerrar</button></div>
     </div></div>`;
   }
@@ -590,6 +592,7 @@ const A={
   clear:()=>{U.confirm={t:'¿Vaciar la mesa? Se quita a todos los jugadores y se borra la partida. Tendrán que volver a unirse.',act:()=>{limpiarU();pedir({op:'vaciar'}).then(r=>{if(!r.ok)toast(r.error)})}};render()},
   deal:()=>{if(S.started){U.confirm={t:'Ya hay una partida en curso. ¿Repartir de nuevo al azar y empezar otra?',act:deal};render()}else deal()},
   manual:()=>{const rc=Reglas.recuento(G,S.players.map(p=>p.role));if(rc.sin){toast('Falta personaje para '+rc.sin+' jugador'+(rc.sin>1?'es':''));return}if(!rc.ok){U.confirm={t:rc.espera?'El reparto no cuadra con la tabla para '+S.players.length+' jugadores. ¿Empezar igualmente?':'No hay reparto estándar para '+S.players.length+' jugadores. ¿Empezar igualmente?',act:startManual};render()}else startManual()},
+  mesa:()=>{pedir({op:'mesa',cerrada:!S.mesaCerrada}).then(r=>{if(r.ok)toast(S.mesaCerrada?'Mesa cerrada: nadie más puede sentarse':'Mesa abierta');else toast(r.error)})},
   logout:()=>{fetch('api/salir',{method:'POST',credentials:'same-origin'}).finally(()=>location.reload())},
   reset:()=>{U.confirm={t:'¿Terminar la partida? Se borran los roles y el grimorio. Los jugadores siguen sentados y vuelven a la mesa.',act:resetGame};render()},
   yes:()=>{const c=U.confirm;U.confirm=null;if(c)c.act();render()},

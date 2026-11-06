@@ -23,6 +23,7 @@ function crearServidor(op={}){
   if(!/^\S{4,64}$/.test(pin))throw new Error('Configura GRIMORIO_PIN (4 a 64 caracteres, sin espacios)');
   const hashPin=crypto.createHash('sha256').update(pin).digest();
   const estado=op.estado||new Estado(op.archivo);
+  if(estado.comprobarPin(pin))console.log('El PIN del director ha cambiado: sesiones cerradas');
   const ipCliente=crearResolutor(op.ipsTunel);
   const urlJugadores=op.urlJugadores||'';
   const log=op.log!==undefined?op.log:{level:'warn'};
@@ -165,6 +166,7 @@ function crearServidor(op={}){
             case 'anadir':r=estado.anadirSinMovil(m.nombre);break;
             case 'orden':r=estado.ordenar((m.ids||[]).map(String));break;
             case 'barajar':r=estado.barajarAsientos();break;
+            case 'mesa':r=estado.cerrarMesa(m.cerrada);break;
             default:r={error:'Operación desconocida'};
           }
         }catch(e){app.log.error(e);r={error:'Error interno'}}

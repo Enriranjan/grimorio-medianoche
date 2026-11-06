@@ -13,8 +13,8 @@ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'grimorio-test-'));
 const archivo=path.join(dir,'estado.json');
 let srv,base,host;
 
-async function arrancar(){
-  srv=crearServidor({pin:PIN,archivo,log:false});
+async function arrancar(pin=PIN){
+  srv=crearServidor({pin,archivo,log:false});
   await srv.app.listen({port:0,host:'127.0.0.1'});
   host='127.0.0.1:'+srv.app.server.address().port;base='http://'+host;
 }
@@ -59,7 +59,7 @@ async function vistaNueva(c,desde,f){return c.esperar(m=>m.t==='vista'&&(!f||f(m
 const NOMBRES=['Ana','Biel','Carmen','Dani','Elena','Fran','Gema'];
 let cookie,dir1,js=[];
 
-test.before(arrancar);
+test.before(()=>arrancar());
 test.after(async()=>{for(const c of js)try{c.ws.terminate()}catch(e){}if(dir1)dir1.ws.terminate();await parar();fs.rmSync(dir,{recursive:true,force:true})});
 
 test('PIN: incorrecto, límite por IP y cabecera de Cloudflare solo desde el túnel',async()=>{
@@ -267,4 +267,33 @@ test('Nombres con caracteres raros se limpian y no rompen nada',async()=>{
   const c=await sentar('<img src=x onerror=alert(1)>\u202e\u0007');js.push(c);
   assert.equal(vistaDe(c).yo.nombre,'<img src=x onerror=alert');
   assert.ok(!vistaDe(c).yo.nombre.includes('\u202e'));
+});
+
+test('MESA cerrada: nadie nuevo se sienta y los sentados siguen entrando con su token',async()=>{
+  assert.ok((await op(dir1,{op:'mesa',cerrada:true})).ok);
+  assert.equal((await dir1.esperar(m=>m.t==='estado'&&m.S.mesaCerrada===true)).S.mesaCerrada,true);
+  await assert.rejects(sentar('Zoe'),/mesa está cerrada/);
+  const fuera=await jugador(null);assert.equal(fuera.ultima('sin-sitio').cerrada,true);await fuera.cerrar();
+  const t=js[1].token;js[1].ws.terminate();js[1]=await jugador(t);js[1].token=t;
+  assert.equal(vistaDe(js[1]).fase,'partida','un sentado que recarga vuelve a su sitio con la mesa cerrada');
+  assert.ok((await op(dir1,{op:'mesa',cerrada:false})).ok);
+  const z=await sentar('Zoe');js.push(z);assert.equal(vistaDe(z).yo.nombre,'Zoe');
+  /* Vaciar la mesa la vuelve a abrir */
+  await op(dir1,{op:'mesa',cerrada:true});
+  assert.ok((await op(dir1,{op:'vaciar'})).ok);
+  const S=(await dir1.esperar(m=>m.t==='estado'&&m.S.players.length===0)).S;
+  assert.equal(S.mesaCerrada,false);
+});
+
+test('Cambiar el PIN cierra todas las sesiones del director',async()=>{
+  for(const c of js)c.ws.terminate();dir1.ws.terminate();
+  await parar();await arrancar(PIN);
+  dir1=await director(cookie);                     /* mismo PIN: la sesión sigue */
+  dir1.ws.terminate();
+  await parar();await arrancar('OtroPin2026x');
+  await assert.rejects(new Cliente('/ws/director',{Cookie:cookie}).abierto,/401/);
+  assert.equal((await login(PIN)).status,401);
+  const ok=await login('OtroPin2026x');assert.equal(ok.status,200);
+  dir1=await director(ok.cookie);
+  assert.ok(!JSON.stringify(dir1.ultima('estado')).includes('"sal"'),'la huella del PIN no se envía');
 });

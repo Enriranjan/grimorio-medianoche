@@ -21,7 +21,7 @@ function jugadorNuevo(id,name){return {id,name,role:null,shown:null,alive:true,g
 
 function estadoInicial(){
   const g=Reglas.guion();
-  return Object.assign({v:2,guion:g.id,nextId:1,players:[],pool:g.roles.map(r=>r.id),cfg:{notes:true,off:true,tmin:3},baseUrl:'',tokens:{},sesiones:{}},partidaVacia());
+  return Object.assign({v:2,guion:g.id,nextId:1,players:[],pool:g.roles.map(r=>r.id),cfg:{notes:true,off:true,tmin:3},baseUrl:'',mesaCerrada:false,tokens:{},sesiones:{},pin:null},partidaVacia());
 }
 
 function limpiarNombre(s){
@@ -79,11 +79,23 @@ class Estado{
   nuevaSesion(){const t=nuevoToken();this.s.sesiones[t]=Date.now()+DURACION_SESION;this.guardar();return t}
   sesionValida(t){const e=typeof t==='string'&&Object.prototype.hasOwnProperty.call(this.s.sesiones,t)?this.s.sesiones[t]:0;return e>Date.now()}
   cerrarSesion(t){if(this.s.sesiones[t]){delete this.s.sesiones[t];this.guardar()}}
+  /* Si el PIN ha cambiado desde el último arranque, se cierran todas las sesiones del director.
+     Se guarda solo una huella con sal (scrypt), nunca el PIN. */
+  comprobarPin(pin){
+    const huella=p=>crypto.scryptSync(String(pin),Buffer.from(p.sal,'hex'),32).toString('hex');
+    const p=this.s.pin;
+    if(p&&p.sal&&p.h&&crypto.timingSafeEqual(Buffer.from(huella(p),'hex'),Buffer.from(p.h,'hex')))return false;
+    const nuevo={sal:crypto.randomBytes(16).toString('hex')};nuevo.h=huella(nuevo);
+    const habia=Object.keys(this.s.sesiones).length;
+    this.s.pin=nuevo;this.s.sesiones={};this.guardar();
+    return habia>0;
+  }
   purgarSesiones(){const now=Date.now();for(const [t,e] of Object.entries(this.s.sesiones))if(e<=now)delete this.s.sesiones[t]}
 
   /* ---------- Jugadores (desde /jugar) ---------- */
   unirse(nombre){
     const name=limpiarNombre(nombre);
+    if(this.s.mesaCerrada)return {error:'La mesa está cerrada. Si te falta sentarte, pide al Narrador que la abra.'};
     if(!name)return {error:'Escribe tu nombre'};
     if(this.s.players.some(p=>mismoNombre(p.name,name)))return {error:'Ya hay alguien sentado con ese nombre. Si eres tú y has cambiado de móvil, pide al Narrador que te quite de la mesa, o elige otro nombre.'};
     if(this.s.players.length>=MAX_JUGADORES)return {error:'La mesa está llena'};
@@ -109,7 +121,7 @@ class Estado{
   }
   vaciar(){
     const ids=this.s.players.map(p=>p.id);
-    this.s.players=[];this.s.tokens={};
+    this.s.players=[];this.s.tokens={};this.s.mesaCerrada=false;
     Object.assign(this.s,partidaVacia());
     this.cambiado();
     return {ok:true,ids};
@@ -136,6 +148,8 @@ class Estado{
     this.s.players.forEach(p=>{if(!vistos.has(p.id))nuevo.push(p)});
     this.s.players=nuevo;this.cambiado();return {ok:true};
   }
+  /* Cerrar la mesa: nadie nuevo puede sentarse (los ya sentados siguen entrando con su token) */
+  cerrarMesa(cerrada){this.s.mesaCerrada=!!cerrada;this.cambiado();return {ok:true}}
   barajarAsientos(){this.s.players=Reglas.barajar(this.s.players);this.cambiado();return {ok:true}}
 
   marcarPool(pool){
@@ -205,7 +219,7 @@ class Estado{
   /* ---------- Vistas ---------- */
   /* Lo que ve el director: todo menos tokens y sesiones */
   vistaDirector(conectados){
-    const {tokens,sesiones,...resto}=this.s;
+    const {tokens,sesiones,pin,...resto}=this.s;
     const v=JSON.parse(JSON.stringify(resto));
     v.players.forEach(p=>{p.movil=this.tieneMovil(p.id);p.conectado=!!(conectados&&conectados.has(p.id))});
     return v;
@@ -233,7 +247,7 @@ class Estado{
     return v;
   }
   /* Antes de unirse: solo los nombres de la mesa */
-  vistaPublica(){return {t:'sin-sitio',fase:this.s.started?'partida':'mesa',mesa:this.s.players.map(q=>({n:q.name}))}}
+  vistaPublica(){return {t:'sin-sitio',fase:this.s.started?'partida':'mesa',cerrada:!!this.s.mesaCerrada,mesa:this.s.players.map(q=>({n:q.name}))}}
 }
 
 module.exports={Estado,limpiarNombre,MAX_JUGADORES,CLAVES_PARTIDA};
